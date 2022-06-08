@@ -1,0 +1,41 @@
+openapi: 3.0.0
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/mohit3.sharma/SimpleAPI/1.0.0
+info:
+  description: This is a simple API
+  version: "1.0.0"
+  title: Simple API
+  contact:
+    email: mohit3.sharma@lntinfotech.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: developers
+    description: Operations available to regular developers
+paths:
+  /health:
+    get:
+      tags:
+        - developers
+      summary: health check API
+      operationId: healthChecking
+      description: method gives health status of app
+      parameters:
+        - in: query
+          name: appName
+          description: param with App name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: App up or down status
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: bad input parameter

@@ -1,0 +1,8 @@
+{
+"basePackage": "com.lti",
+"configPackage": "com.lti.config",
+"apiPackage": "com.lti.controllers",
+"modelPackage": "com.lti.model",
+"groupId": "com.lti",
+"artifactId": "mule-to-si"
+}
