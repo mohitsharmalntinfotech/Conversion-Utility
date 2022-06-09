@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -67,9 +68,6 @@ import org.xml.sax.SAXException;
 @RestController
 public class ProjectCreaterApplication {
 
-	@Value("${source.mulexml}")
-	private String sourceMuleXML;
-
 	@Value("${destn.javafile}")
 	private String destnJavaFile;
 
@@ -83,7 +81,7 @@ public class ProjectCreaterApplication {
 
 	@EventListener
 	public void onApplicationReadyEvent(ApplicationReadyEvent event) throws IOException {
-		System.out.println("Hello");
+		System.out.println("Start the App to build SI integration");
 	}
 
 	@PostMapping("/migrate")
@@ -103,6 +101,31 @@ public class ProjectCreaterApplication {
 		
 		return "Application migrated to spring boot successfully";
 	}
+	
+	@PostMapping("/multiProjectMigrate")
+	String utilMultiProjectCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
+		String sourceMultiDir = sourceDestModel.getSource();
+		String destinationMultiDir = sourceDestModel.getDestination();
+		String sourceDir = "";
+		String destinationDir = "";
+		File[] directories = new File(sourceMultiDir).listFiles(File::isDirectory);
+		for(File localSourceDirectory : directories) {
+			sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
+			destinationDir = destinationMultiDir +"\\" + localSourceDirectory.getName();
+			String cmd = OPENAPI_CMD + destinationDir;
+			Process p = Runtime.getRuntime().exec(cmd);
+			Thread.sleep(8000);
+
+			directoryCleanUp(destinationDir);
+			String mainBootFileName = modifyMainJavaFile(destinationDir);
+			modifyPropFile(sourceDir, destinationDir);
+			modifyPOMFile(sourceDir, destinationDir);
+			createIntegrationFile(sourceDir, destinationDir,mainBootFileName);
+		}
+		
+		return "Application migrated to spring boot successfully";
+	}
+	
 	
 	
 	private void directoryCleanUp(String destinationDir) throws IOException {
@@ -167,7 +190,8 @@ public class ProjectCreaterApplication {
 
 		try {
 			String nodeVal = null;
-			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleXML);
+			String sourceMuleFileName = getMuleFileLocation(sourceDir);
+			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
 			File fXmlFile = new File(sourceMuleXMLlocation);
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
@@ -230,6 +254,20 @@ public class ProjectCreaterApplication {
 	}
 
 	
+	private String getMuleFileLocation(String sourceDir) {
+		String file= "";
+		String sourceMuleFolderlocation = getDirectoryNameForFile(sourceDir, "mule");
+		File listFiles[]  = new File(sourceMuleFolderlocation).listFiles();
+		if(listFiles.length>1) {
+			Arrays.sort(listFiles, (f1, f2) -> {
+				return new Long(f2.length()).compareTo(new Long(f1.length()));
+			});
+		}
+		file = listFiles[0].getName();
+		
+		return file;
+	}
+
 	public void modifyPOMFile(String sourceDir, String destinationDir) throws URISyntaxException {
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -278,7 +316,8 @@ public class ProjectCreaterApplication {
 	private void createIntegrationFile(String sourceDir, String destinationDir, String mainBootFileName) throws Exception {
 		try {
 
-			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleXML);
+			String sourceMuleFileName = getMuleFileLocation(sourceDir);
+			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
 
 			XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
 			XMLEventReader reader = xmlInputFactory.createXMLEventReader(new FileInputStream(sourceMuleXMLlocation));
@@ -524,7 +563,8 @@ public class ProjectCreaterApplication {
 		DocumentBuilder builder;
 		try {
 			builder = factory.newDocumentBuilder();
-			String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, sourceMuleXML);
+			String sourceMuleFileName = getMuleFileLocation(sourceDir);
+			String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
 			Document document = builder.parse(new File(sourceMulePOMlocation));
 			document.getDocumentElement().normalize();
 
