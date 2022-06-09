@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -45,7 +46,11 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.springframework.beans.factory.annotation.Value;
@@ -94,7 +99,7 @@ public class ProjectCreaterApplication {
 		Thread.sleep(8000);
 			
 		directoryCleanUp(destinationDir);
-		String mainBootFileName = modifyMainJavaFile(destinationDir);
+		String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
 		modifyPropFile(sourceDir, destinationDir);
 		modifyPOMFile(sourceDir, destinationDir);
 		createIntegrationFile(sourceDir, destinationDir,mainBootFileName);
@@ -104,6 +109,7 @@ public class ProjectCreaterApplication {
 	
 	@PostMapping("/multiProjectMigrate")
 	String utilMultiProjectCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
+		
 		String sourceMultiDir = sourceDestModel.getSource();
 		String destinationMultiDir = sourceDestModel.getDestination();
 		String sourceDir = "";
@@ -117,7 +123,7 @@ public class ProjectCreaterApplication {
 			Thread.sleep(8000);
 
 			directoryCleanUp(destinationDir);
-			String mainBootFileName = modifyMainJavaFile(destinationDir);
+			String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
 			modifyPropFile(sourceDir, destinationDir);
 			modifyPOMFile(sourceDir, destinationDir);
 			createIntegrationFile(sourceDir, destinationDir,mainBootFileName);
@@ -141,7 +147,8 @@ public class ProjectCreaterApplication {
 	}
 
 	
-	public String modifyMainJavaFile(String destinationDir) throws IOException {
+	public String modifyMainJavaFile(String sourceDir, String destinationDir) throws IOException, XmlPullParserException {
+
 		String mainBootFileName = "SpringBootApp";
 		StringBuffer sb = new StringBuffer();
 		String destnJavaFileLocation = getDirectoryNameForFile(destinationDir, destnJavaFile);
@@ -268,7 +275,7 @@ public class ProjectCreaterApplication {
 		return file;
 	}
 
-	public void modifyPOMFile(String sourceDir, String destinationDir) throws URISyntaxException {
+	public void modifyPOMFile(String sourceDir, String destinationDir) throws URISyntaxException, FileNotFoundException, IOException, XmlPullParserException {
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder;
@@ -310,6 +317,25 @@ public class ProjectCreaterApplication {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+
+		//modifyArtifact(sourceDir, destinationDir);
+	}
+
+	private void modifyArtifact(String sourceDir, String destinationDir)
+			throws IOException, XmlPullParserException, FileNotFoundException {
+		MavenXpp3Reader reader = new MavenXpp3Reader();
+		String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, POM_XML);
+        Model modelSource = reader.read(new FileReader(sourceMulePOMlocation));
+        
+        
+        String destMulePOMlocation = getDirectoryNameForFile(destinationDir, POM_XML);
+        MavenXpp3Reader readerNew = new MavenXpp3Reader();
+		Model modelDest = readerNew.read(new FileReader(destMulePOMlocation));
+		modelDest.setArtifactId(modelSource.getArtifactId());
+		
+		MavenXpp3Writer writer = new MavenXpp3Writer();
+        writer.write(new FileWriter(destMulePOMlocation), modelDest);
 	}
 	
 	
