@@ -20,6 +20,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -44,6 +45,8 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.apache.tomcat.util.http.fileupload.FileUtils;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -584,6 +587,42 @@ public class ProjectCreaterApplication {
 			e.printStackTrace();
 		}
 
+	}
+	
+	private static void cloneSourceGitRepo() {
+		String repoUrl = "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
+		String cloneDirectoryPath = "D:\\path"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
+		try {
+		    System.out.println("Cloning "+repoUrl+" into "+repoUrl);
+		    Git.cloneRepository()
+		        .setURI(repoUrl)
+		        .setDirectory(Paths.get(cloneDirectoryPath).toFile())
+		        .call();
+		    System.out.println("Completed Cloning");
+		} catch (GitAPIException e) {
+		    System.out.println("Exception occurred while cloning repo");
+		    e.printStackTrace();
+		}
+	}
+	
+	private static void cloneSourceGitRepoAndCommit() {
+		String repoUrl = "https://github.com/mohitsharmalntinfotech/demo1.git";
+		String cloneDirectoryPath = "D:\\destination"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
+		try {
+		    System.out.println("Cloning "+repoUrl+" into "+repoUrl);
+		    Git git = Git.cloneRepository()
+		        .setURI(repoUrl)
+		        .setDirectory(Paths.get(cloneDirectoryPath).toFile())
+		        .call();
+		    System.out.println("Completed Cloning");
+		
+	            System.out.println("Created repository: " + git.getRepository().getDirectory());
+	            git.add().addFilepattern("abc.txt").call();
+	            git.commit().setMessage("second commit").call();
+	            git.push().call();
+		}catch (Exception e) {
+			// TODO: handle exception
+		} 
 	}
 
 }
