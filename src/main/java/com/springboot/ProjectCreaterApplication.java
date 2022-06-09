@@ -55,12 +55,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @RestController
 public class ProjectCreaterApplication {
 
-//	@Value("${source.mule.directory}")
-//	private String sourceProjectLocation;
-
-//	@Value("${destn.integration.directory}")
-//	private String destnProjectLocation;
-
 	@Value("${source.mulexml}")
 	private String sourceMuleXML;
 
@@ -73,6 +67,14 @@ public class ProjectCreaterApplication {
 	private static final String PACKAGE_NAME = "package";
 	private static final String SPRINGBOOT_ANNOTATION_NAME = "@SpringBootApplication";
 	private static final String IMPORT_RESOURCE_STATMNT = "import org.springframework.context.annotation.ImportResource;";
+	private static final String OPENAPI_CMD = "java -jar openapi-generator-cli-4.3.1.jar generate -g spring -i openapi.yaml -c conf.json -o ";
+	private static final String OPENAPI_CONFIG_CLASS = "OpenAPIDocumentationConfig.java";
+	private static final String OPENAPI_HEALTH_CLASS = "HealthApiController.java";
+	private static final String OPENAPI_SPRINGBOOT_CLASS = "OpenAPI2SpringBoot";
+	private static final String APP_PROP = "application.properties";
+	private static final String POM_XML = "pom.xml";
+	private static final String CONFIG_FILE_FOR_APP_PROP = "config.properties";
+	private static final String MULE_TO_SI_DEPENDECY_PROP = "muledependencies.properties";
 
 
 	public static void main(String[] args) throws IOException {
@@ -89,44 +91,43 @@ public class ProjectCreaterApplication {
 		String sourceDir = sourceDestModel.getSource();
 		String destinationDir = sourceDestModel.getDestination();
 		
-		String cmd = "java -jar openapi-generator-cli-4.3.1.jar generate -g spring -i openapi.yaml -c conf.json -o "
-				+ destinationDir;
+		String cmd = OPENAPI_CMD + destinationDir;
 		Process p = Runtime.getRuntime().exec(cmd);
 		Thread.sleep(8000);
 			
-		deleteDirectories(destinationDir);
-		String mainBootFileName = modifyJavaClass(destinationDir);
+		directoryCleanUp(destinationDir);
+		String mainBootFileName = modifyMainJavaFile(destinationDir);
 		modifyPropFile(sourceDir, destinationDir);
-		modifyPOM(sourceDir, destinationDir);
+		modifyPOMFile(sourceDir, destinationDir);
 		createIntegrationFile(sourceDir, destinationDir,mainBootFileName);
 		
 		return "Application migrated to spring boot successfully";
 	}
 	
 	
-	private void deleteDirectories(String destinationDir) throws IOException {
-		String destnDeleteLocation1 = getDirectoryNameForFile(destinationDir, "OpenAPIDocumentationConfig.java");
-		destnDeleteLocation1 = destnDeleteLocation1.replace("\\OpenAPIDocumentationConfig.java", "");
-		String destnDeleteLocation2 = getDirectoryNameForFile(destinationDir, "HealthApiController.java");
-		destnDeleteLocation2 = destnDeleteLocation2.replace("\\HealthApiController.java", "");
-		File f1 = new File(destnDeleteLocation1);
-		File f2 = new File(destnDeleteLocation2);
-		FileUtils.deleteDirectory(f1);
-		FileUtils.deleteDirectory(f2);
+	private void directoryCleanUp(String destinationDir) throws IOException {
+		String destnConfigDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_CONFIG_CLASS);
+		destnConfigDeleteLocation = destnConfigDeleteLocation.replace("\\"+ OPENAPI_CONFIG_CLASS, "");
+		String destnAPIDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_HEALTH_CLASS);
+		destnAPIDeleteLocation = destnAPIDeleteLocation.replace("\\"+ OPENAPI_HEALTH_CLASS, "");
+		File fileDirectoryConfig = new File(destnConfigDeleteLocation);
+		File fileDirectoryAPI = new File(destnAPIDeleteLocation);
+		FileUtils.deleteDirectory(fileDirectoryConfig);
+		FileUtils.deleteDirectory(fileDirectoryAPI);
 		
 	}
 
 	
-	public String modifyJavaClass(String destinationDir) throws IOException {
-		String mainBootFileName = "myName.java";
+	public String modifyMainJavaFile(String destinationDir) throws IOException {
+		String mainBootFileName = "myNameApplication";
 		StringBuffer sb = new StringBuffer();
 		String destnJavaFileLocation = getDirectoryNameForFile(destinationDir, destnJavaFile);
 		FileReader fr = new FileReader(destnJavaFileLocation);
 		BufferedReader br = new BufferedReader(fr);
 		String line = null;
 		while ((line = br.readLine()) != null) {
-			if(line.contains(" OpenAPI2SpringBoot") || line.contains("OpenAPI2SpringBoot.class")) {
-				line= line.replace("OpenAPI2SpringBoot", mainBootFileName);
+			if(line.contains(" "+OPENAPI_SPRINGBOOT_CLASS) || line.contains(OPENAPI_SPRINGBOOT_CLASS+".class")) {
+				line= line.replace(OPENAPI_SPRINGBOOT_CLASS, mainBootFileName);
 				sb.append(line);
 				sb.append('\n');
 			}else {
@@ -149,13 +150,16 @@ public class ProjectCreaterApplication {
 		}
 		br.close();
 		writingLogic(destnJavaFileLocation, sb, false);
-		
-		File file = new File(destnJavaFileLocation);
-		String newdestnJavaFileLocation = destnJavaFileLocation.replace("OpenAPI2SpringBoot.java", "") + mainBootFileName;
-		File newJavafile =new File(newdestnJavaFileLocation);
-		file.renameTo(newJavafile);
+		renamingFile(mainBootFileName, destnJavaFileLocation);
 		return mainBootFileName;
 		
+	}
+
+	private void renamingFile(String mainBootFileName, String destnJavaFileLocation) {
+		File file = new File(destnJavaFileLocation);
+		String newdestnJavaFileLocation = destnJavaFileLocation.replace(OPENAPI_SPRINGBOOT_CLASS+".java", "") + mainBootFileName+".java";
+		File newJavafile =new File(newdestnJavaFileLocation);
+		file.renameTo(newJavafile);
 	}
 	
 	
@@ -171,9 +175,8 @@ public class ProjectCreaterApplication {
 			doc.getDocumentElement().normalize();
 
 			ConcurrentHashMap<String, ConcurrentHashMap<String, String>> outerMap = new ConcurrentHashMap<String, ConcurrentHashMap<String, String>>();
-
 			FileReader fr = new FileReader(
-					new File(getClass().getClassLoader().getResource("config.properties").toURI()));
+					new File(getClass().getClassLoader().getResource(CONFIG_FILE_FOR_APP_PROP).toURI()));
 			BufferedReader br = new BufferedReader(fr);
 			String line = null;
 			while ((line = br.readLine()) != null) {
@@ -218,9 +221,8 @@ public class ProjectCreaterApplication {
 
 			}
 
-			String destnAppPropLocation = getDirectoryNameForFile(destinationDir, "application.properties");
+			String destnAppPropLocation = getDirectoryNameForFile(destinationDir, APP_PROP);
 			writingLogic(destnAppPropLocation, sb, true);
-			
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -228,13 +230,13 @@ public class ProjectCreaterApplication {
 	}
 
 	
-	public void modifyPOM(String sourceDir, String destinationDir) throws URISyntaxException {
-		// Get Document Builder
+	public void modifyPOMFile(String sourceDir, String destinationDir) throws URISyntaxException {
+
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder;
 		try {
 			builder = factory.newDocumentBuilder();
-			String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, "pom.xml");
+			String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, POM_XML);
 			Document document = builder.parse(new File(sourceMulePOMlocation));
 			document.getDocumentElement().normalize();
 
@@ -244,7 +246,7 @@ public class ProjectCreaterApplication {
 			ArrayList<String> siDependencyList = new ArrayList<>();
 
 			FileReader reader = new FileReader(
-					new File(getClass().getClassLoader().getResource("muledependencies.properties").toURI()));
+					new File(getClass().getClassLoader().getResource(MULE_TO_SI_DEPENDECY_PROP).toURI()));
 
 			Properties propertiesFile = new Properties();
 			propertiesFile.load(reader);
@@ -372,8 +374,8 @@ public class ProjectCreaterApplication {
 	
 	private void createListnerFile(String destinationDir, String mainBootFileName) throws Exception, IOException {
 		
-		String destnListnerLocation = getDirectoryNameForFile(destinationDir, mainBootFileName);
-		destnListnerLocation = destnListnerLocation.replace("\\"+mainBootFileName, "");
+		String destnListnerLocation = getDirectoryNameForFile(destinationDir, mainBootFileName+".java");
+		destnListnerLocation = destnListnerLocation.replace("\\"+mainBootFileName+".java", "");
 		File listnerFile = new File(destnListnerLocation+"\\"+"SimpleMessageListener.java");
 		BufferedWriter listnerWriter = null;
 		StringBuffer sb = new StringBuffer();
@@ -433,7 +435,7 @@ public class ProjectCreaterApplication {
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
-		String destnPOMLocation = getDirectoryNameForFile(destinationDir, "pom.xml");
+		String destnPOMLocation = getDirectoryNameForFile(destinationDir, POM_XML);
 		File myFile = new File(destnPOMLocation);
 		Document document = builder.parse(myFile);
 		document.getDocumentElement().normalize();
@@ -451,7 +453,6 @@ public class ProjectCreaterApplication {
 		try {
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
 			Transformer transf = transformerFactory.newTransformer();
-			// transf.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
 			transf.setOutputProperty(OutputKeys.INDENT, "yes");
 
 			DOMSource source = new DOMSource(document);
@@ -586,47 +587,6 @@ public class ProjectCreaterApplication {
 			e.printStackTrace();
 		}
 
-	}
-	
-	
-	
-	private void overrideJsonFile(ConfigurationModel conf, String destinationDir) throws URISyntaxException, IOException {
-
-		//ConfigurationModel conf = sourceDestModel.getConf();
-		
-//		ObjectMapper objectMapper = new ObjectMapper();
-//		String destnConfLocation = getDirectoryNameForFile(System.getProperty("user.dir"), "conf.json");
-//		ConfigurationModel initialConfModel = objectMapper.readValue( new File(destnConfLocation), ConfigurationModel.class);
-		
-//		if(conf!=null) {
-//			overrideJsonFile(conf,destinationDir);
-//		}
-
-		
-		//objectMapper.writeValue(new File(destnConfLocation), initialConfModel);
-		
-		ObjectMapper objectMapper = new ObjectMapper();
-		String destnConfLocation = getDirectoryNameForFile(System.getProperty("user.dir"), "conf.json");
-		ConfigurationModel localConfModel = objectMapper.readValue( new File(destnConfLocation), ConfigurationModel.class);
-		if(!StringUtils.isEmpty(conf.getArtifactId())) {
-			localConfModel.setArtifactId(conf.getArtifactId());
-		}
-		if(!StringUtils.isEmpty(conf.getGroupId())) {
-			localConfModel.setGroupId(conf.getGroupId());
-		}
-		if(!StringUtils.isEmpty(conf.getBasePackage())) {
-			localConfModel.setBasePackage(conf.getBasePackage());
-		}
-		if(!StringUtils.isEmpty(conf.getApiPackage())) {
-			localConfModel.setApiPackage(conf.getApiPackage());
-		}
-		if(!StringUtils.isEmpty(conf.getConfigPackage())) {
-			localConfModel.setConfigPackage(conf.getConfigPackage());
-		}
-		if(!StringUtils.isEmpty(conf.getModelPackage())) {
-			localConfModel.setModelPackage(conf.getModelPackage());
-		}
-		objectMapper.writeValue(new File(destnConfLocation), localConfModel);		
 	}
 
 }
