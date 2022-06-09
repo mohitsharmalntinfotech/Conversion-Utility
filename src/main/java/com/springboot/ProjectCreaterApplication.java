@@ -102,7 +102,176 @@ public class ProjectCreaterApplication {
 		
 		return "Application migrated to spring boot successfully";
 	}
+	
+	
+	private void deleteDirectories(String destinationDir) throws IOException {
+		String destnDeleteLocation1 = getDirectoryNameForFile(destinationDir, "OpenAPIDocumentationConfig.java");
+		destnDeleteLocation1 = destnDeleteLocation1.replace("\\OpenAPIDocumentationConfig.java", "");
+		String destnDeleteLocation2 = getDirectoryNameForFile(destinationDir, "HealthApiController.java");
+		destnDeleteLocation2 = destnDeleteLocation2.replace("\\HealthApiController.java", "");
+		File f1 = new File(destnDeleteLocation1);
+		File f2 = new File(destnDeleteLocation2);
+		FileUtils.deleteDirectory(f1);
+		FileUtils.deleteDirectory(f2);
+		
+	}
 
+	
+	public String modifyJavaClass(String destinationDir) throws IOException {
+		String mainBootFileName = "myName.java";
+		StringBuffer sb = new StringBuffer();
+		String destnJavaFileLocation = getDirectoryNameForFile(destinationDir, destnJavaFile);
+		FileReader fr = new FileReader(destnJavaFileLocation);
+		BufferedReader br = new BufferedReader(fr);
+		String line = null;
+		while ((line = br.readLine()) != null) {
+			if(line.contains(" OpenAPI2SpringBoot") || line.contains("OpenAPI2SpringBoot.class")) {
+				line= line.replace("OpenAPI2SpringBoot", mainBootFileName);
+				sb.append(line);
+				sb.append('\n');
+			}else {
+				sb.append(line);
+				sb.append('\n');
+				if (line.contains(PACKAGE_NAME)) {
+					// add import statement for importResources
+					sb.append(IMPORT_RESOURCE_STATMNT);
+					sb.append('\n');
+				}
+				if (line.contains(SPRINGBOOT_ANNOTATION_NAME)) {
+					// add importResource annotation with XML name
+					StringBuffer newSb = new StringBuffer();
+					newSb.append("@ImportResource(\"classpath*:/").append(destnSpringIntFileName).append("\")");
+					sb.append(newSb);
+					sb.append('\n');
+				}
+			}
+			
+		}
+		br.close();
+		writingLogic(destnJavaFileLocation, sb, false);
+		
+		File file = new File(destnJavaFileLocation);
+		String newdestnJavaFileLocation = destnJavaFileLocation.replace("OpenAPI2SpringBoot.java", "") + mainBootFileName;
+		File newJavafile =new File(newdestnJavaFileLocation);
+		file.renameTo(newJavafile);
+		return mainBootFileName;
+		
+	}
+	
+	
+	public void modifyPropFile(String sourceDir, String destinationDir) {
+
+		try {
+			String nodeVal = null;
+			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleXML);
+			File fXmlFile = new File(sourceMuleXMLlocation);
+			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+			Document doc = dBuilder.parse(fXmlFile);
+			doc.getDocumentElement().normalize();
+
+			ConcurrentHashMap<String, ConcurrentHashMap<String, String>> outerMap = new ConcurrentHashMap<String, ConcurrentHashMap<String, String>>();
+
+			FileReader fr = new FileReader(
+					new File(getClass().getClassLoader().getResource("config.properties").toURI()));
+			BufferedReader br = new BufferedReader(fr);
+			String line = null;
+			while ((line = br.readLine()) != null) {
+				ConcurrentHashMap<String, String> innerMap = new ConcurrentHashMap<String, String>();
+				String[] arr = line.split("=");
+				String nodeName = arr[0];
+				String attrList = arr[1];
+				String[] attrArray = attrList.split(",");
+				for (String attrName : attrArray) {
+					innerMap.put(attrName, "");
+				}
+				outerMap.put(nodeName, innerMap);
+			}
+
+			for (String nodeName : outerMap.keySet()) {
+				ConcurrentHashMap<String, String> localInnerMap = outerMap.get(nodeName);
+				for (String nodeAttr : localInnerMap.keySet()) {
+					nodeVal = documentParserValue(doc, nodeName, nodeAttr);
+					localInnerMap.put(nodeAttr, nodeVal);
+				}
+				outerMap.put(nodeName, localInnerMap);
+			}
+
+			StringBuffer sb = new StringBuffer();
+			for (String nodeName : outerMap.keySet()) {
+				ConcurrentHashMap<String, String> localInnerMap = outerMap.get(nodeName);
+				for (String nodeAttr : localInnerMap.keySet()) {
+
+					if (nodeName.equalsIgnoreCase("jms:factory-configuration")
+							&& nodeAttr.equalsIgnoreCase("brokerUrl")) {
+						sb.append("spring.activemq.broker-url=").append(localInnerMap.get(nodeAttr)).append('\n');
+					}
+					if (nodeName.equalsIgnoreCase("jms:active-mq-connection")
+							&& nodeAttr.equalsIgnoreCase("username")) {
+						sb.append("spring.activemq.user=").append(localInnerMap.get(nodeAttr)).append('\n');
+					}
+					if (nodeName.equalsIgnoreCase("jms:active-mq-connection")
+							&& nodeAttr.equalsIgnoreCase("password")) {
+						sb.append("spring.activemq.password=").append(localInnerMap.get(nodeAttr)).append('\n');
+					}
+				}
+
+			}
+
+			String destnAppPropLocation = getDirectoryNameForFile(destinationDir, "application.properties");
+			writingLogic(destnAppPropLocation, sb, true);
+			
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	
+	public void modifyPOM(String sourceDir, String destinationDir) throws URISyntaxException {
+		// Get Document Builder
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder;
+		try {
+			builder = factory.newDocumentBuilder();
+			String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, "pom.xml");
+			Document document = builder.parse(new File(sourceMulePOMlocation));
+			document.getDocumentElement().normalize();
+
+			Element root = document.getDocumentElement();
+
+			NodeList nList = document.getElementsByTagName("dependency");
+			ArrayList<String> siDependencyList = new ArrayList<>();
+
+			FileReader reader = new FileReader(
+					new File(getClass().getClassLoader().getResource("muledependencies.properties").toURI()));
+
+			Properties propertiesFile = new Properties();
+			propertiesFile.load(reader);
+
+			for (int temp = 0; temp < nList.getLength(); temp++) {
+				Node node = nList.item(temp);
+
+				if (node.getNodeType() == Node.ELEMENT_NODE) {
+					Element elem = (Element) node;
+					Node muleNode = elem.getElementsByTagName("artifactId").item(0);
+					String dependencyName = propertiesFile.getProperty(muleNode.getTextContent());
+					if (dependencyName != null) {
+						siDependencyList.add(dependencyName);
+					}
+				}
+			}
+			writeDependenciestoDestnPOM(siDependencyList, destinationDir);
+
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+		} catch (SAXException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	
 	private void createIntegrationFile(String sourceDir, String destinationDir, String mainBootFileName) throws Exception {
 		try {
@@ -200,6 +369,7 @@ public class ProjectCreaterApplication {
 
 	}
 
+	
 	private void createListnerFile(String destinationDir, String mainBootFileName) throws Exception, IOException {
 		
 		String destnListnerLocation = getDirectoryNameForFile(destinationDir, mainBootFileName);
@@ -255,178 +425,6 @@ public class ProjectCreaterApplication {
 		finally {
 			if (writer != null)
 				writer.close();
-		}
-	}
-
-	public String modifyJavaClass(String destinationDir) throws IOException {
-		String mainBootFileName = "myName.java";
-		StringBuffer sb = new StringBuffer();
-		String destnJavaFileLocation = getDirectoryNameForFile(destinationDir, destnJavaFile);
-		FileReader fr = new FileReader(destnJavaFileLocation);
-		BufferedReader br = new BufferedReader(fr);
-		String line = null;
-		while ((line = br.readLine()) != null) {
-			if(line.contains(" OpenAPI2SpringBoot") || line.contains("OpenAPI2SpringBoot.class")) {
-				line= line.replace("OpenAPI2SpringBoot", mainBootFileName);
-				sb.append(line);
-				sb.append('\n');
-			}else {
-				sb.append(line);
-				sb.append('\n');
-				if (line.contains(PACKAGE_NAME)) {
-					// add import statement for importResources
-					sb.append(IMPORT_RESOURCE_STATMNT);
-					sb.append('\n');
-				}
-				if (line.contains(SPRINGBOOT_ANNOTATION_NAME)) {
-					// add importResource annotation with XML name
-					StringBuffer newSb = new StringBuffer();
-					newSb.append("@ImportResource(\"classpath*:/").append(destnSpringIntFileName).append("\")");
-					sb.append(newSb);
-					sb.append('\n');
-				}
-			}
-			
-		}
-		br.close();
-		writingLogic(destnJavaFileLocation, sb, false);
-		
-		File file = new File(destnJavaFileLocation);
-		String newdestnJavaFileLocation = destnJavaFileLocation.replace("OpenAPI2SpringBoot.java", "") + mainBootFileName;
-		File newJavafile =new File(newdestnJavaFileLocation);
-		file.renameTo(newJavafile);
-		return mainBootFileName;
-		
-	}
-
-	public void modifyPropFile(String sourceDir, String destinationDir) {
-
-		try {
-			String nodeVal = null;
-			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleXML);
-			File fXmlFile = new File(sourceMuleXMLlocation);
-			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-			Document doc = dBuilder.parse(fXmlFile);
-			doc.getDocumentElement().normalize();
-
-			ConcurrentHashMap<String, ConcurrentHashMap<String, String>> outerMap = new ConcurrentHashMap<String, ConcurrentHashMap<String, String>>();
-
-			FileReader fr = new FileReader(
-					new File(getClass().getClassLoader().getResource("config.properties").toURI()));
-			BufferedReader br = new BufferedReader(fr);
-			String line = null;
-			while ((line = br.readLine()) != null) {
-				ConcurrentHashMap<String, String> innerMap = new ConcurrentHashMap<String, String>();
-				String[] arr = line.split("=");
-				String nodeName = arr[0];
-				String attrList = arr[1];
-				String[] attrArray = attrList.split(",");
-				for (String attrName : attrArray) {
-					innerMap.put(attrName, "");
-				}
-				outerMap.put(nodeName, innerMap);
-			}
-
-			for (String nodeName : outerMap.keySet()) {
-				ConcurrentHashMap<String, String> localInnerMap = outerMap.get(nodeName);
-				for (String nodeAttr : localInnerMap.keySet()) {
-					nodeVal = documentParserValue(doc, nodeName, nodeAttr);
-					localInnerMap.put(nodeAttr, nodeVal);
-				}
-				outerMap.put(nodeName, localInnerMap);
-			}
-
-			StringBuffer sb = new StringBuffer();
-			for (String nodeName : outerMap.keySet()) {
-				ConcurrentHashMap<String, String> localInnerMap = outerMap.get(nodeName);
-				for (String nodeAttr : localInnerMap.keySet()) {
-
-					if (nodeName.equalsIgnoreCase("jms:factory-configuration")
-							&& nodeAttr.equalsIgnoreCase("brokerUrl")) {
-						sb.append("spring.activemq.broker-url=").append(localInnerMap.get(nodeAttr)).append('\n');
-					}
-					if (nodeName.equalsIgnoreCase("jms:active-mq-connection")
-							&& nodeAttr.equalsIgnoreCase("username")) {
-						sb.append("spring.activemq.user=").append(localInnerMap.get(nodeAttr)).append('\n');
-					}
-					if (nodeName.equalsIgnoreCase("jms:active-mq-connection")
-							&& nodeAttr.equalsIgnoreCase("password")) {
-						sb.append("spring.activemq.password=").append(localInnerMap.get(nodeAttr)).append('\n');
-					}
-				}
-
-			}
-
-			String destnAppPropLocation = getDirectoryNameForFile(destinationDir, "application.properties");
-			writingLogic(destnAppPropLocation, sb, true);
-			
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void writingLogic(String fileLocation, StringBuffer sb, boolean EOF) throws IOException {
-		FileWriter writer = new FileWriter(fileLocation, EOF);
-		writer.write(sb.toString());
-		writer.close();
-	}
-
-	private String documentParserValue(Document doc, String elementName, String elementNodeName) {
-		NodeList nList = doc.getElementsByTagName(elementName);
-		String value = null;
-		for (int temp = 0; temp < nList.getLength(); temp++) {
-			Node nNode = nList.item(temp);
-			if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-				Element eElement = (Element) nNode;
-				value = eElement.getAttribute(elementNodeName);
-			}
-		}
-		return value;
-	}
-
-	public void modifyPOM(String sourceDir, String destinationDir) throws URISyntaxException {
-		// Get Document Builder
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder builder;
-		try {
-			builder = factory.newDocumentBuilder();
-			String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, "pom.xml");
-			Document document = builder.parse(new File(sourceMulePOMlocation));
-			document.getDocumentElement().normalize();
-
-			Element root = document.getDocumentElement();
-
-			NodeList nList = document.getElementsByTagName("dependency");
-			ArrayList<String> siDependencyList = new ArrayList<>();
-
-			FileReader reader = new FileReader(
-					new File(getClass().getClassLoader().getResource("muledependencies.properties").toURI()));
-
-			Properties propertiesFile = new Properties();
-			propertiesFile.load(reader);
-
-			for (int temp = 0; temp < nList.getLength(); temp++) {
-				Node node = nList.item(temp);
-
-				if (node.getNodeType() == Node.ELEMENT_NODE) {
-					Element elem = (Element) node;
-					Node muleNode = elem.getElementsByTagName("artifactId").item(0);
-					String dependencyName = propertiesFile.getProperty(muleNode.getTextContent());
-					if (dependencyName != null) {
-						siDependencyList.add(dependencyName);
-					}
-				}
-			}
-			writeDependenciestoDestnPOM(siDependencyList, destinationDir);
-
-		} catch (ParserConfigurationException e) {
-			e.printStackTrace();
-		} catch (SAXException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
 	}
 
@@ -497,18 +495,26 @@ public class ProjectCreaterApplication {
 		return null;
 	}
 	
-	private void deleteDirectories(String destinationDir) throws IOException {
-		String destnDeleteLocation1 = getDirectoryNameForFile(destinationDir, "OpenAPIDocumentationConfig.java");
-		destnDeleteLocation1 = destnDeleteLocation1.replace("\\OpenAPIDocumentationConfig.java", "");
-		String destnDeleteLocation2 = getDirectoryNameForFile(destinationDir, "HealthApiController.java");
-		destnDeleteLocation2 = destnDeleteLocation2.replace("\\HealthApiController.java", "");
-		File f1 = new File(destnDeleteLocation1);
-		File f2 = new File(destnDeleteLocation2);
-		FileUtils.deleteDirectory(f1);
-		FileUtils.deleteDirectory(f2);
-		
+	
+	private void writingLogic(String fileLocation, StringBuffer sb, boolean EOF) throws IOException {
+		FileWriter writer = new FileWriter(fileLocation, EOF);
+		writer.write(sb.toString());
+		writer.close();
 	}
 
+	private String documentParserValue(Document doc, String elementName, String elementNodeName) {
+		NodeList nList = doc.getElementsByTagName(elementName);
+		String value = null;
+		for (int temp = 0; temp < nList.getLength(); temp++) {
+			Node nNode = nList.item(temp);
+			if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+				Element eElement = (Element) nNode;
+				value = eElement.getAttribute(elementNodeName);
+			}
+		}
+		return value;
+	}
+	
 	
 	private void createDynamicIntegrationFile(String sourceDir, String destinationDir) {
 
