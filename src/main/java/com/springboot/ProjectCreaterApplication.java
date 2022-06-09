@@ -88,21 +88,12 @@ public class ProjectCreaterApplication {
 	String utilCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
 		String sourceDir = sourceDestModel.getSource();
 		String destinationDir = sourceDestModel.getDestination();
-		//ConfigurationModel conf = sourceDestModel.getConf();
-		
-//		ObjectMapper objectMapper = new ObjectMapper();
-//		String destnConfLocation = getDirectoryNameForFile(System.getProperty("user.dir"), "conf.json");
-//		ConfigurationModel initialConfModel = objectMapper.readValue( new File(destnConfLocation), ConfigurationModel.class);
-		
-//		if(conf!=null) {
-//			overrideJsonFile(conf,destinationDir);
-//		}
 		
 		String cmd = "java -jar openapi-generator-cli-4.3.1.jar generate -g spring -i openapi.yaml -c conf.json -o "
 				+ destinationDir;
 		Process p = Runtime.getRuntime().exec(cmd);
 		Thread.sleep(8000);
-		//objectMapper.writeValue(new File(destnConfLocation), initialConfModel);	
+			
 		deleteDirectories(destinationDir);
 		String mainBootFileName = modifyJavaClass(destinationDir);
 		modifyPropFile(sourceDir, destinationDir);
@@ -595,6 +586,19 @@ public class ProjectCreaterApplication {
 	
 	private void overrideJsonFile(ConfigurationModel conf, String destinationDir) throws URISyntaxException, IOException {
 
+		//ConfigurationModel conf = sourceDestModel.getConf();
+		
+//		ObjectMapper objectMapper = new ObjectMapper();
+//		String destnConfLocation = getDirectoryNameForFile(System.getProperty("user.dir"), "conf.json");
+//		ConfigurationModel initialConfModel = objectMapper.readValue( new File(destnConfLocation), ConfigurationModel.class);
+		
+//		if(conf!=null) {
+//			overrideJsonFile(conf,destinationDir);
+//		}
+
+		
+		//objectMapper.writeValue(new File(destnConfLocation), initialConfModel);
+		
 		ObjectMapper objectMapper = new ObjectMapper();
 		String destnConfLocation = getDirectoryNameForFile(System.getProperty("user.dir"), "conf.json");
 		ConfigurationModel localConfModel = objectMapper.readValue( new File(destnConfLocation), ConfigurationModel.class);
