@@ -1,5 +1,17 @@
 package com.springboot;
 
+import static com.springboot.constant.UtilConstant.APP_PROP;
+import static com.springboot.constant.UtilConstant.CONFIG_FILE_FOR_APP_PROP;
+import static com.springboot.constant.UtilConstant.IMPORT_RESOURCE_STATMNT;
+import static com.springboot.constant.UtilConstant.MULE_TO_SI_DEPENDECY_PROP;
+import static com.springboot.constant.UtilConstant.OPENAPI_CMD;
+import static com.springboot.constant.UtilConstant.OPENAPI_CONFIG_CLASS;
+import static com.springboot.constant.UtilConstant.OPENAPI_HEALTH_CLASS;
+import static com.springboot.constant.UtilConstant.OPENAPI_SPRINGBOOT_CLASS;
+import static com.springboot.constant.UtilConstant.PACKAGE_NAME;
+import static com.springboot.constant.UtilConstant.POM_XML;
+import static com.springboot.constant.UtilConstant.SPRINGBOOT_ANNOTATION_NAME;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -37,7 +49,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,8 +58,6 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 @SpringBootApplication
@@ -63,18 +72,6 @@ public class ProjectCreaterApplication {
 
 	@Value("${springint.fileName}")
 	private String destnSpringIntFileName;
-
-	private static final String PACKAGE_NAME = "package";
-	private static final String SPRINGBOOT_ANNOTATION_NAME = "@SpringBootApplication";
-	private static final String IMPORT_RESOURCE_STATMNT = "import org.springframework.context.annotation.ImportResource;";
-	private static final String OPENAPI_CMD = "java -jar openapi-generator-cli-4.3.1.jar generate -g spring -i openapi.yaml -c conf.json -o ";
-	private static final String OPENAPI_CONFIG_CLASS = "OpenAPIDocumentationConfig.java";
-	private static final String OPENAPI_HEALTH_CLASS = "HealthApiController.java";
-	private static final String OPENAPI_SPRINGBOOT_CLASS = "OpenAPI2SpringBoot";
-	private static final String APP_PROP = "application.properties";
-	private static final String POM_XML = "pom.xml";
-	private static final String CONFIG_FILE_FOR_APP_PROP = "config.properties";
-	private static final String MULE_TO_SI_DEPENDECY_PROP = "muledependencies.properties";
 
 
 	public static void main(String[] args) throws IOException {
@@ -119,7 +116,7 @@ public class ProjectCreaterApplication {
 
 	
 	public String modifyMainJavaFile(String destinationDir) throws IOException {
-		String mainBootFileName = "myNameApplication";
+		String mainBootFileName = "SpringBootApp";
 		StringBuffer sb = new StringBuffer();
 		String destnJavaFileLocation = getDirectoryNameForFile(destinationDir, destnJavaFile);
 		FileReader fr = new FileReader(destnJavaFileLocation);
