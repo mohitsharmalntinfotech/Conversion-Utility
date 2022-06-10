@@ -53,11 +53,14 @@ import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.transport.CredentialsProvider;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -88,9 +91,14 @@ public class ProjectCreaterApplication {
 	public void onApplicationReadyEvent(ApplicationReadyEvent event) throws IOException {
 		System.out.println("Start the App to build SI integration");
 	}
+	
+	@GetMapping("/git")
+	void gitdemo() {
+		cloneSourceGitRepo();
+	}
 
 	@PostMapping("/migrate")
-	String utilCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
+	public String utilCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
 		String sourceDir = sourceDestModel.getSource();
 		String destinationDir = sourceDestModel.getDestination();
 		
@@ -108,7 +116,7 @@ public class ProjectCreaterApplication {
 	}
 	
 	@PostMapping("/multiProjectMigrate")
-	String utilMultiProjectCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
+	public String utilMultiProjectCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
 		
 		String sourceMultiDir = sourceDestModel.getSource();
 		String destinationMultiDir = sourceDestModel.getDestination();
@@ -656,13 +664,16 @@ public class ProjectCreaterApplication {
 	}
 	
 	private static void cloneSourceGitRepo() {
-		String repoUrl = "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
+		//String repoUrl = "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
+		String repoUrl = "https://github.com/mohitsharmalntinfotech/privateRepo.git";
+		
 		String cloneDirectoryPath = "D:\\path"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
 		try {
 		    System.out.println("Cloning "+repoUrl+" into "+repoUrl);
 		    Git.cloneRepository()
 		        .setURI(repoUrl)
 		        .setDirectory(Paths.get(cloneDirectoryPath).toFile())
+		        .setCredentialsProvider(configAuthentication("mohitsharmalntinfotech", "Mkbwdatc12*"))
 		        .call();
 		    System.out.println("Completed Cloning");
 		} catch (GitAPIException e) {
@@ -671,6 +682,10 @@ public class ProjectCreaterApplication {
 		}
 	}
 	
+	private static UsernamePasswordCredentialsProvider configAuthentication(String user, String password) {
+        return new UsernamePasswordCredentialsProvider(user, password ); 
+    }
+
 	private static void cloneSourceGitRepoAndCommit() {
 		String repoUrl = "https://github.com/mohitsharmalntinfotech/demo1.git";
 		String cloneDirectoryPath = "D:\\destination"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
