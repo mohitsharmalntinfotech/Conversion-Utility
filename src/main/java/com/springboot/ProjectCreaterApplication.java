@@ -53,7 +53,6 @@ import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -71,7 +70,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-
 @SpringBootApplication
 @RestController
 public class ProjectCreaterApplication {
@@ -82,7 +80,6 @@ public class ProjectCreaterApplication {
 	@Value("${springint.fileName}")
 	private String destnSpringIntFileName;
 
-
 	public static void main(String[] args) throws IOException {
 		SpringApplication.run(ProjectCreaterApplication.class, args);
 	}
@@ -91,7 +88,7 @@ public class ProjectCreaterApplication {
 	public void onApplicationReadyEvent(ApplicationReadyEvent event) throws IOException {
 		System.out.println("Start the App to build SI integration");
 	}
-	
+
 	@GetMapping("/git")
 	void gitdemo() {
 		cloneSourceGitRepo();
@@ -101,31 +98,170 @@ public class ProjectCreaterApplication {
 	public String utilCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
 		String sourceDir = sourceDestModel.getSource();
 		String destinationDir = sourceDestModel.getDestination();
-		
+
 		String cmd = OPENAPI_CMD + destinationDir;
 		Process p = Runtime.getRuntime().exec(cmd);
 		Thread.sleep(8000);
-			
+
 		directoryCleanUp(destinationDir);
 		String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
 		modifyPropFile(sourceDir, destinationDir);
 		modifyPOMFile(sourceDir, destinationDir);
-		createIntegrationFile(sourceDir, destinationDir,mainBootFileName);
-		
+		// createIntegrationFile(sourceDir, destinationDir,mainBootFileName);
+		createIntegrationXMLFile(sourceDir, destinationDir, mainBootFileName);
+
 		return "Application migrated to spring boot successfully";
 	}
-	
+
+	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName) {
+
+		// Get Document Builder
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder;
+		try {
+			builder = factory.newDocumentBuilder();
+			String sourceMuleFileName = getMuleFileLocation(sourceDir);
+			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
+			Document document = builder.parse(new File(sourceMuleXMLlocation));
+			document.getDocumentElement().normalize();
+
+			Map<String, String> xmlNamespaceMap = modifyXmlNameSpace(document);
+
+			StringBuilder writeXml = getNamespaceValues(xmlNamespaceMap);
+			System.out.println(writeXml);
+
+			Map<String, String> flowArributeMap = getFlowAttribute(document);
+
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		} catch (SAXException e) {
+
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private Map<String, String> getFlowAttribute(Document document) {
+		Map<String, String> flowAttribute = new HashMap<>();
+		NodeList flowTagList = document.getElementsByTagName("flow");
+
+		System.out.println(flowTagList.getLength());
+		NodeList flowNode = flowTagList.item(0).getChildNodes();
+		for (int i = 0; i < flowNode.getLength(); i++) {
+			Node childNode = (Node) flowNode.item(i);
+			if (childNode.getNodeType() == Node.ELEMENT_NODE) {
+				NamedNodeMap attributesMap = childNode.getAttributes();
+				for (int a = 0; a < attributesMap.getLength(); a++) {
+					Node nodeTheAttribute = attributesMap.item(a);
+					System.out.println(nodeTheAttribute.getNodeName() + " -- " + nodeTheAttribute.getNodeValue());
+					if (nodeTheAttribute.getNodeName().equalsIgnoreCase("path")
+							|| nodeTheAttribute.getNodeName().equalsIgnoreCase("destination")
+							|| nodeTheAttribute.getNodeName().equalsIgnoreCase("message")) {
+						flowAttribute.put(nodeTheAttribute.getNodeName(), nodeTheAttribute.getNodeValue());
+					}
+				}
+			}
+
+		}
+
+		return flowAttribute;
+	}
+
+	private StringBuilder getNamespaceValues(Map<String, String> xmlNamespaceMap) {
+
+		StringBuilder xmlStringBuilder = new StringBuilder();
+		xmlStringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n  <beans  ");
+		for (Map.Entry<String, String> entry : xmlNamespaceMap.entrySet()) {
+			xmlStringBuilder.append("\n" + entry.getKey() + "=" + "\"" + entry.getValue() + "\"");
+		}
+		xmlStringBuilder.append(">");
+
+		return xmlStringBuilder;
+	}
+
+	private Map<String, String> modifyXmlNameSpace(Document document)
+			throws FileNotFoundException, URISyntaxException, IOException {
+		NodeList muleTagList = document.getElementsByTagName("mule");
+		Map<String, String> xmlNamespaceMap = new HashMap<>();
+		xmlNamespaceMap.put("xmlns:integration", "http://www.springframework.org/schema/integration");
+
+		FileReader nameSpaceReader = new FileReader(
+				new File(getClass().getClassLoader().getResource("namespace-mapping.properties").toURI()));
+
+		Properties nameSpacePropertiesFile = new Properties();
+		nameSpacePropertiesFile.load(nameSpaceReader);
+
+		FileReader schemaReader = new FileReader(
+				new File(getClass().getClassLoader().getResource("schema-mapping.properties").toURI()));
+
+		Properties schemaPropertiesFile = new Properties();
+		schemaPropertiesFile.load(schemaReader);
+
+		Node node = muleTagList.item(0);
+
+		if (node.getNodeType() == Node.ELEMENT_NODE) {
+			Node theAttribute = null;
+			String muleXmlNameSpace = null;
+			String springNameSpace = null;
+			NamedNodeMap attributes = node.getAttributes();
+			StringBuilder sb;
+			for (int a = 0; a < attributes.getLength(); a++) {
+				theAttribute = attributes.item(a);
+				if (theAttribute.getNodeName().equals("xsi:schemaLocation")) {
+
+					String[] splitSchemaLocation = theAttribute.getNodeValue().split(" ");
+					int length = splitSchemaLocation.length;
+					sb = new StringBuilder();
+					sb = sb.append(
+							"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd ");
+					for (int i = 0; i < length; i++) {
+						String schemaName = splitSchemaLocation[i].replace(":", "-");
+						String springSchemaName = schemaPropertiesFile.getProperty(schemaName);
+						if (springSchemaName != null) {
+							sb = sb.append(springSchemaName);
+							if (i < length - 1) {
+								sb.append(" ");
+							}
+
+						}
+
+					}
+
+					xmlNamespaceMap.put(theAttribute.getNodeName(), sb.toString());
+
+				} else {
+					muleXmlNameSpace = theAttribute.getNodeName().replace(":", "-");
+					springNameSpace = nameSpacePropertiesFile.getProperty(muleXmlNameSpace);
+					if (springNameSpace != null) {
+						String[] splitNameSpace = springNameSpace.split(",");
+						xmlNamespaceMap.put(splitNameSpace[0], splitNameSpace[1]);
+					}
+				}
+
+			}
+
+			System.out.println(xmlNamespaceMap);
+
+		}
+
+		return xmlNamespaceMap;
+	}
+
 	@PostMapping("/multiProjectMigrate")
 	public String utilMultiProjectCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
-		
+
 		String sourceMultiDir = sourceDestModel.getSource();
 		String destinationMultiDir = sourceDestModel.getDestination();
 		String sourceDir = "";
 		String destinationDir = "";
 		File[] directories = new File(sourceMultiDir).listFiles(File::isDirectory);
-		for(File localSourceDirectory : directories) {
+		for (File localSourceDirectory : directories) {
 			sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
-			destinationDir = destinationMultiDir +"\\" + localSourceDirectory.getName();
+			destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName();
 			String cmd = OPENAPI_CMD + destinationDir;
 			Process p = Runtime.getRuntime().exec(cmd);
 			Thread.sleep(8000);
@@ -134,28 +270,26 @@ public class ProjectCreaterApplication {
 			String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
 			modifyPropFile(sourceDir, destinationDir);
 			modifyPOMFile(sourceDir, destinationDir);
-			createIntegrationFile(sourceDir, destinationDir,mainBootFileName);
+			createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
 		}
-		
+
 		return "Application migrated to spring boot successfully";
 	}
-	
-	
-	
+
 	private void directoryCleanUp(String destinationDir) throws IOException {
 		String destnConfigDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_CONFIG_CLASS);
-		destnConfigDeleteLocation = destnConfigDeleteLocation.replace("\\"+ OPENAPI_CONFIG_CLASS, "");
+		destnConfigDeleteLocation = destnConfigDeleteLocation.replace("\\" + OPENAPI_CONFIG_CLASS, "");
 		String destnAPIDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_HEALTH_CLASS);
-		destnAPIDeleteLocation = destnAPIDeleteLocation.replace("\\"+ OPENAPI_HEALTH_CLASS, "");
+		destnAPIDeleteLocation = destnAPIDeleteLocation.replace("\\" + OPENAPI_HEALTH_CLASS, "");
 		File fileDirectoryConfig = new File(destnConfigDeleteLocation);
 		File fileDirectoryAPI = new File(destnAPIDeleteLocation);
 		FileUtils.deleteDirectory(fileDirectoryConfig);
 		FileUtils.deleteDirectory(fileDirectoryAPI);
-		
+
 	}
 
-	
-	public String modifyMainJavaFile(String sourceDir, String destinationDir) throws IOException, XmlPullParserException {
+	public String modifyMainJavaFile(String sourceDir, String destinationDir)
+			throws IOException, XmlPullParserException {
 
 		String mainBootFileName = "SpringBootApp";
 		StringBuffer sb = new StringBuffer();
@@ -164,11 +298,11 @@ public class ProjectCreaterApplication {
 		BufferedReader br = new BufferedReader(fr);
 		String line = null;
 		while ((line = br.readLine()) != null) {
-			if(line.contains(" "+OPENAPI_SPRINGBOOT_CLASS) || line.contains(OPENAPI_SPRINGBOOT_CLASS+".class")) {
-				line= line.replace(OPENAPI_SPRINGBOOT_CLASS, mainBootFileName);
+			if (line.contains(" " + OPENAPI_SPRINGBOOT_CLASS) || line.contains(OPENAPI_SPRINGBOOT_CLASS + ".class")) {
+				line = line.replace(OPENAPI_SPRINGBOOT_CLASS, mainBootFileName);
 				sb.append(line);
 				sb.append('\n');
-			}else {
+			} else {
 				sb.append(line);
 				sb.append('\n');
 				if (line.contains(PACKAGE_NAME)) {
@@ -184,23 +318,23 @@ public class ProjectCreaterApplication {
 					sb.append('\n');
 				}
 			}
-			
+
 		}
 		br.close();
 		writingLogic(destnJavaFileLocation, sb, false);
 		renamingFile(mainBootFileName, destnJavaFileLocation);
 		return mainBootFileName;
-		
+
 	}
 
 	private void renamingFile(String mainBootFileName, String destnJavaFileLocation) {
 		File file = new File(destnJavaFileLocation);
-		String newdestnJavaFileLocation = destnJavaFileLocation.replace(OPENAPI_SPRINGBOOT_CLASS+".java", "") + mainBootFileName+".java";
-		File newJavafile =new File(newdestnJavaFileLocation);
+		String newdestnJavaFileLocation = destnJavaFileLocation.replace(OPENAPI_SPRINGBOOT_CLASS + ".java", "")
+				+ mainBootFileName + ".java";
+		File newJavafile = new File(newdestnJavaFileLocation);
 		file.renameTo(newJavafile);
 	}
-	
-	
+
 	public void modifyPropFile(String sourceDir, String destinationDir) {
 
 		try {
@@ -268,22 +402,22 @@ public class ProjectCreaterApplication {
 		}
 	}
 
-	
 	private String getMuleFileLocation(String sourceDir) {
-		String file= "";
+		String file = "";
 		String sourceMuleFolderlocation = getDirectoryNameForFile(sourceDir, "mule");
-		File listFiles[]  = new File(sourceMuleFolderlocation).listFiles();
-		if(listFiles.length>1) {
+		File listFiles[] = new File(sourceMuleFolderlocation).listFiles();
+		if (listFiles.length > 1) {
 			Arrays.sort(listFiles, (f1, f2) -> {
 				return new Long(f2.length()).compareTo(new Long(f1.length()));
 			});
 		}
 		file = listFiles[0].getName();
-		
+
 		return file;
 	}
 
-	public void modifyPOMFile(String sourceDir, String destinationDir) throws URISyntaxException, FileNotFoundException, IOException, XmlPullParserException {
+	public void modifyPOMFile(String sourceDir, String destinationDir)
+			throws URISyntaxException, FileNotFoundException, IOException, XmlPullParserException {
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder;
@@ -325,29 +459,27 @@ public class ProjectCreaterApplication {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
 
-		//modifyArtifact(sourceDir, destinationDir);
+		// modifyArtifact(sourceDir, destinationDir);
 	}
 
 	private void modifyArtifact(String sourceDir, String destinationDir)
 			throws IOException, XmlPullParserException, FileNotFoundException {
 		MavenXpp3Reader reader = new MavenXpp3Reader();
 		String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, POM_XML);
-        Model modelSource = reader.read(new FileReader(sourceMulePOMlocation));
-        
-        
-        String destMulePOMlocation = getDirectoryNameForFile(destinationDir, POM_XML);
-        MavenXpp3Reader readerNew = new MavenXpp3Reader();
+		Model modelSource = reader.read(new FileReader(sourceMulePOMlocation));
+
+		String destMulePOMlocation = getDirectoryNameForFile(destinationDir, POM_XML);
+		MavenXpp3Reader readerNew = new MavenXpp3Reader();
 		Model modelDest = readerNew.read(new FileReader(destMulePOMlocation));
 		modelDest.setArtifactId(modelSource.getArtifactId());
-		
+
 		MavenXpp3Writer writer = new MavenXpp3Writer();
-        writer.write(new FileWriter(destMulePOMlocation), modelDest);
+		writer.write(new FileWriter(destMulePOMlocation), modelDest);
 	}
-	
-	
-	private void createIntegrationFile(String sourceDir, String destinationDir, String mainBootFileName) throws Exception {
+
+	private void createIntegrationFile(String sourceDir, String destinationDir, String mainBootFileName)
+			throws Exception {
 		try {
 
 			String sourceMuleFileName = getMuleFileLocation(sourceDir);
@@ -432,9 +564,8 @@ public class ProjectCreaterApplication {
 			}
 
 			createIntegrationXMLFile(xmlStringBuilder, destinationDir);
-			
-		
-			createListnerFile(destinationDir,mainBootFileName);
+
+			createListnerFile(destinationDir, mainBootFileName);
 
 		}
 
@@ -444,32 +575,21 @@ public class ProjectCreaterApplication {
 
 	}
 
-	
 	private void createListnerFile(String destinationDir, String mainBootFileName) throws Exception, IOException {
-		
-		String destnListnerLocation = getDirectoryNameForFile(destinationDir, mainBootFileName+".java");
-		destnListnerLocation = destnListnerLocation.replace("\\"+mainBootFileName+".java", "");
-		File listnerFile = new File(destnListnerLocation+"\\"+"SimpleMessageListener.java");
+
+		String destnListnerLocation = getDirectoryNameForFile(destinationDir, mainBootFileName + ".java");
+		destnListnerLocation = destnListnerLocation.replace("\\" + mainBootFileName + ".java", "");
+		File listnerFile = new File(destnListnerLocation + "\\" + "SimpleMessageListener.java");
 		BufferedWriter listnerWriter = null;
 		StringBuffer sb = new StringBuffer();
-		sb.append("package com.lti;\n"
-				+ "\n"
-				+ "import org.springframework.stereotype.Component;\n"
-				+ "\n"
-				+ "@Component\n"
-				+ "public class SimpleMessageListener {\n"
-				+ "\n"
-				+ "	public String onMessage() {\n"
-				+ "		\n"
-				+ "		return \"Published\";\n"
-				+ "	}\n"
-				+ "	\n"
-				+ "}");
+		sb.append("package com.lti;\n" + "\n" + "import org.springframework.stereotype.Component;\n" + "\n"
+				+ "@Component\n" + "public class SimpleMessageListener {\n" + "\n" + "	public String onMessage() {\n"
+				+ "		\n" + "		return \"Published\";\n" + "	}\n" + "	\n" + "}");
 		try {
-			
+
 			listnerWriter = new BufferedWriter(new FileWriter(listnerFile));
 			listnerWriter.append(sb);
-			
+
 		}
 
 		catch (Exception e) {
@@ -482,7 +602,8 @@ public class ProjectCreaterApplication {
 		}
 	}
 
-	private void createIntegrationXMLFile(StringBuilder xmlStringBuilder, String  destinationDir) throws Exception, IOException {
+	private void createIntegrationXMLFile(StringBuilder xmlStringBuilder, String destinationDir)
+			throws Exception, IOException {
 		String destnResourceLocation = getDirectoryNameForFile(destinationDir, "resources");
 
 		String fileName = destnResourceLocation + "//" + destnSpringIntFileName;
@@ -568,8 +689,7 @@ public class ProjectCreaterApplication {
 		}
 		return null;
 	}
-	
-	
+
 	private void writingLogic(String fileLocation, StringBuffer sb, boolean EOF) throws IOException {
 		FileWriter writer = new FileWriter(fileLocation, EOF);
 		writer.write(sb.toString());
@@ -588,8 +708,7 @@ public class ProjectCreaterApplication {
 		}
 		return value;
 	}
-	
-	
+
 	private void createDynamicIntegrationFile(String sourceDir, String destinationDir) {
 
 		// Get Document Builder
@@ -639,16 +758,15 @@ public class ProjectCreaterApplication {
 			NodeList flowNode = flowTagList.item(0).getChildNodes();
 //			NodeList nodes= flowNode.getChildNodes();
 			System.out.println(flowNode.getLength());
-			for(int i=0; i<flowNode.getLength(); i++) {
-				Node childNode = (Node)flowNode.item(i); 
-				System.out.println("Node Name : "+childNode.getNodeName());
-				System.out.println("Node getNodeType : "+childNode.getNodeType());
-				System.out.println("Node getNextSibling : "+childNode.getNextSibling());
-				System.out.println("Node getTextContent : "+childNode.getTextContent());
-				System.out.println("Node getNodeValue : "+childNode.getNodeValue());
-				System.out.println("Node getNamespaceURI : "+childNode.getNamespaceURI());
+			for (int i = 0; i < flowNode.getLength(); i++) {
+				Node childNode = (Node) flowNode.item(i);
+				System.out.println("Node Name : " + childNode.getNodeName());
+				System.out.println("Node getNodeType : " + childNode.getNodeType());
+				System.out.println("Node getNextSibling : " + childNode.getNextSibling());
+				System.out.println("Node getTextContent : " + childNode.getTextContent());
+				System.out.println("Node getNodeValue : " + childNode.getNodeValue());
+				System.out.println("Node getNamespaceURI : " + childNode.getNamespaceURI());
 			}
-			
 
 		} catch (ParserConfigurationException e) {
 			e.printStackTrace();
@@ -662,48 +780,43 @@ public class ProjectCreaterApplication {
 		}
 
 	}
-	
+
 	private static void cloneSourceGitRepo() {
-		//String repoUrl = "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
+		// String repoUrl =
+		// "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
 		String repoUrl = "https://github.com/mohitsharmalntinfotech/privateRepo.git";
-		
+
 		String cloneDirectoryPath = "D:\\path"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
 		try {
-		    System.out.println("Cloning "+repoUrl+" into "+repoUrl);
-		    Git.cloneRepository()
-		        .setURI(repoUrl)
-		        .setDirectory(Paths.get(cloneDirectoryPath).toFile())
-		        .setCredentialsProvider(configAuthentication("mohitsharmalntinfotech", "Mkbwdatc12*"))
-		        .call();
-		    System.out.println("Completed Cloning");
+			System.out.println("Cloning " + repoUrl + " into " + repoUrl);
+			Git.cloneRepository().setURI(repoUrl).setDirectory(Paths.get(cloneDirectoryPath).toFile())
+					.setCredentialsProvider(configAuthentication("mohitsharmalntinfotech", "Mkbwdatc12*")).call();
+			System.out.println("Completed Cloning");
 		} catch (GitAPIException e) {
-		    System.out.println("Exception occurred while cloning repo");
-		    e.printStackTrace();
+			System.out.println("Exception occurred while cloning repo");
+			e.printStackTrace();
 		}
 	}
-	
+
 	private static UsernamePasswordCredentialsProvider configAuthentication(String user, String password) {
-        return new UsernamePasswordCredentialsProvider(user, password ); 
-    }
+		return new UsernamePasswordCredentialsProvider(user, password);
+	}
 
 	private static void cloneSourceGitRepoAndCommit() {
 		String repoUrl = "https://github.com/mohitsharmalntinfotech/demo1.git";
 		String cloneDirectoryPath = "D:\\destination"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
 		try {
-		    System.out.println("Cloning "+repoUrl+" into "+repoUrl);
-		    Git git = Git.cloneRepository()
-		        .setURI(repoUrl)
-		        .setDirectory(Paths.get(cloneDirectoryPath).toFile())
-		        .call();
-		    System.out.println("Completed Cloning");
-		
-	            System.out.println("Created repository: " + git.getRepository().getDirectory());
-	            git.add().addFilepattern("abc.txt").call();
-	            git.commit().setMessage("second commit").call();
-	            git.push().call();
-		}catch (Exception e) {
+			System.out.println("Cloning " + repoUrl + " into " + repoUrl);
+			Git git = Git.cloneRepository().setURI(repoUrl).setDirectory(Paths.get(cloneDirectoryPath).toFile()).call();
+			System.out.println("Completed Cloning");
+
+			System.out.println("Created repository: " + git.getRepository().getDirectory());
+			git.add().addFilepattern("abc.txt").call();
+			git.commit().setMessage("second commit").call();
+			git.push().call();
+		} catch (Exception e) {
 			// TODO: handle exception
-		} 
+		}
 	}
 
 }
