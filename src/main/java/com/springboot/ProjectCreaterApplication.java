@@ -15,6 +15,7 @@ import static com.springboot.constant.UtilConstant.SPRINGBOOT_ANNOTATION_NAME;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -54,15 +55,12 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.NoMessageException;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -91,11 +89,59 @@ public class ProjectCreaterApplication {
 		System.out.println("Start the App to build SI integration");
 	}
 
-	@GetMapping("/git")
-	void gitdemo() throws GitAPIException {
-		cloneSourceGitRepo();
-	}
+	@PostMapping("/multiProjectMigrateWithGIT")
+	public List<ResultModel> utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel) {
+		List<ResultModel> resultModelList = new ArrayList<ResultModel>();
+		ResultModel model = new ResultModel();
+		try {
+			
+			String sourceRepo = sourceDestModel.getSource();
+			String destinationRepo = sourceDestModel.getDestination();
+			
+			String sourceMultiDir = "D:\\Source";
+			String destinationMultiDir = "D:\\DesDir";
+			String gitFolder = "D:\\Destination";
+			
+			cloneSourceGitRepo(sourceRepo,sourceMultiDir);
+			
+			String sourceDir = "";
+			String destinationDir = "";
+			File[] directories = new File(sourceMultiDir).listFiles(new FileFilter() {
+			    @Override
+			    public boolean accept(File file) {
+			    	if(file.getName().equalsIgnoreCase(".git")) {
+			    		return false;
+			    	}
+			    	else
+			        return file.isDirectory();
+			    }
+			});
+			for (File localSourceDirectory : directories) {
+				sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
+				destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName();
+				String cmd = OPENAPI_CMD + destinationDir;
+				Process p = Runtime.getRuntime().exec(cmd);
+				Thread.sleep(8000);
 
+				directoryCleanUp(destinationDir);
+				String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
+				modifyPropFile(sourceDir, destinationDir);
+				modifyPOMFile(sourceDir, destinationDir);
+				createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
+				model.setProjectName(localSourceDirectory.getName());
+				model.setSuccess(true);
+			}
+			
+			cloneDestinationGitRepoAndCommit(destinationRepo,destinationMultiDir,gitFolder);
+			
+		} catch (Exception e) {
+			model.setSuccess(false);
+		}
+		resultModelList.add(model);
+		return resultModelList;
+	}
+	
+	
 	@PostMapping("/migrate")
 	public String utilCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
 		String sourceDir = sourceDestModel.getSource();
@@ -717,55 +763,37 @@ public class ProjectCreaterApplication {
 
 	}
 
-	/* Clone Private Repository */
-	private static void cloneSourceGitRepo() throws GitAPIException {
-		// String repoUrl =
-		// "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
-		String repoUrl = "https://github.com/RaviGyanSingh1/testprivate.git";
-
-		String cloneDirectoryPath = "C:\\privaterepo"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
-		File localPath = new File(cloneDirectoryPath);
-		System.out.println("Cloning " + repoUrl + " into " + repoUrl);
-		Git.cloneRepository().setURI(repoUrl)
-				.setCredentialsProvider(configAuthentication("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", ""))
+	private static void cloneSourceGitRepo(String sourceRepoUrl, String clonedSourceDirectory) throws Exception {
+		File localPath = new File(clonedSourceDirectory);
+		Git.cloneRepository().setURI(sourceRepoUrl)
+				.setCredentialsProvider(configAuthentication("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", ""))
 				.setDirectory(localPath).call();
-		System.out.println("Completed Cloning");
 	}
 
 	private static UsernamePasswordCredentialsProvider configAuthentication(String user, String password) {
 		return new UsernamePasswordCredentialsProvider(user, password);
 	}
 
-	/* Clone Public Repository and commit */
-	private static void cloneSourceGitRepoAndCommit() throws GitAPIException, NoMessageException {
-		String repoUrl = "https://github.com/RaviGyanSingh1/TestPublic.git";
-		String cloneDirectoryPath = "C:\\destination"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
-		System.out.println("Cloning " + repoUrl + " into " + repoUrl);
-		Git git = Git.cloneRepository().setURI(repoUrl).setDirectory(Paths.get(cloneDirectoryPath).toFile()).call();
-		System.out.println("Completed Cloning");
-
-		System.out.println("Created repository: " + git.getRepository().getDirectory());
-		// Git gitOpen = Git.open(new File(cloneDirectoryPath));
-		// gitOpen.pull().call();
+	private static void cloneDestinationGitRepoAndCommit(String destinationRepoUrl, String destinationFolder, String gitFolder) throws Exception {
+		Git git = Git.cloneRepository().setURI(destinationRepoUrl)
+				.setDirectory(Paths.get(gitFolder).toFile()).call();
+		copyFiles(destinationFolder,gitFolder); //copy generated projects from local destination folder to GIT folder for commit
 		git.add().addFilepattern(".").call();
-		git.commit().setMessage("new commit").call();
-		git.push().setCredentialsProvider(configAuthentication("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", "")).call();
-		System.out.println("Completed push");
+		String commitMessage = "commit message "+ Math.random();
+		git.commit().setMessage(commitMessage).call();
+		git.push().setCredentialsProvider(configAuthentication("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", "")).call();
 	}
 
-	/* Copy Files from Destination to LocalRepository */
-	private static void copyFiles() throws IOException {
-		Path sourceDir = Paths.get("C:\\your");
-		Path destinationDir = Paths.get("C:\\destination");
+	private static void copyFiles(String source, String dest) throws Exception {
+		Path destinationFolder = Paths.get(source);
+		Path destinationGITFolder = Paths.get(dest);
 
-		// Traverse the file tree and copy each file/directory.
-		Files.walk(sourceDir).forEach(sourcePath -> {
+		Files.walk(destinationFolder).forEach(sourcePath -> {
 			try {
-				Path targetPath = destinationDir.resolve(sourceDir.relativize(sourcePath));
-				System.out.printf("Copying %s to %s%n", sourcePath, targetPath);
+				Path targetPath = destinationGITFolder.resolve(destinationFolder.relativize(sourcePath));
 				Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 			} catch (IOException ex) {
-				System.out.format("I/O error: %s%n", ex);
+				ex.printStackTrace();
 			}
 		});
 
