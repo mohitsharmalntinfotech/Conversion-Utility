@@ -64,6 +64,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -91,7 +92,7 @@ public class ProjectCreaterApplication {
 	}
 
 	@PostMapping("/multiProjectMigrateWithGIT")
-	public List<ResultModel> utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel) {
+	public List<ResultModel> utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel, @RequestHeader(value = "token", required = false) String token) {
 		List<ResultModel> resultModelList = new ArrayList<ResultModel>();
 		ResultModel model = new ResultModel();
 		try {
@@ -103,7 +104,7 @@ public class ProjectCreaterApplication {
 			String destinationMultiDir = "D:\\DesDir";
 			String gitFolder = "D:\\Destination";
 			
-			cloneSourceGitRepo(sourceRepo,sourceMultiDir);
+			cloneSourceGitRepo(sourceRepo,sourceMultiDir,token);
 			
 			String sourceDir = "";
 			String destinationDir = "";
@@ -133,7 +134,7 @@ public class ProjectCreaterApplication {
 				model.setSuccess(true);
 			}
 			
-			cloneDestinationGitRepoAndCommit(destinationRepo,destinationMultiDir,gitFolder);
+			cloneDestinationGitRepoAndCommit(destinationRepo,destinationMultiDir,gitFolder,token);
 			
 		} catch (Exception ex) {
 			model.setSuccess(false);
@@ -328,13 +329,12 @@ public class ProjectCreaterApplication {
 		String destnAPIDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_HEALTH_CLASS);
 		destnAPIDeleteLocation = destnAPIDeleteLocation.replace("\\" + OPENAPI_HEALTH_CLASS, "");
 		String destnFormatterLocation = getDirectoryNameForFile(destinationDir, FORMATTER_CLASS);
-		destnFormatterLocation = destnFormatterLocation.replace("\\" + FORMATTER_CLASS, "");
 		File fileDirectoryConfig = new File(destnConfigDeleteLocation);
 		File fileDirectoryAPI = new File(destnAPIDeleteLocation);
 		File fileDirectoryFormatter = new File(destnFormatterLocation);
 		FileUtils.deleteDirectory(fileDirectoryConfig);
 		FileUtils.deleteDirectory(fileDirectoryAPI);
-		FileUtils.deleteDirectory(fileDirectoryFormatter);
+		FileUtils.forceDelete(fileDirectoryFormatter);
 
 	}
 
@@ -769,10 +769,10 @@ public class ProjectCreaterApplication {
 
 	}
 
-	private static void cloneSourceGitRepo(String sourceRepoUrl, String clonedSourceDirectory) throws Exception {
+	private static void cloneSourceGitRepo(String sourceRepoUrl, String clonedSourceDirectory, String token) throws Exception {
 		File localPath = new File(clonedSourceDirectory);
 		Git.cloneRepository().setURI(sourceRepoUrl)
-				.setCredentialsProvider(configAuthentication("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", ""))
+				.setCredentialsProvider(configAuthentication(token, ""))
 				.setDirectory(localPath).call();
 	}
 
@@ -780,14 +780,14 @@ public class ProjectCreaterApplication {
 		return new UsernamePasswordCredentialsProvider(user, password);
 	}
 
-	private static void cloneDestinationGitRepoAndCommit(String destinationRepoUrl, String destinationFolder, String gitFolder) throws Exception {
+	private static void cloneDestinationGitRepoAndCommit(String destinationRepoUrl, String destinationFolder, String gitFolder, String token) throws Exception {
 		Git git = Git.cloneRepository().setURI(destinationRepoUrl)
 				.setDirectory(Paths.get(gitFolder).toFile()).call();
 		copyFiles(destinationFolder,gitFolder); //copy generated projects from local destination folder to GIT folder for commit
 		git.add().addFilepattern(".").call();
 		String commitMessage = "commit message "+ Math.random();
 		git.commit().setMessage(commitMessage).call();
-		git.push().setCredentialsProvider(configAuthentication("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", "")).call();
+		git.push().setCredentialsProvider(configAuthentication(token, "")).call();
 	}
 
 	private static void copyFiles(String source, String dest) throws Exception {
