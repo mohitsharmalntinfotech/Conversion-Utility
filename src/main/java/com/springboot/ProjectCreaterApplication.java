@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -113,35 +114,24 @@ public class ProjectCreaterApplication {
 		return "Application migrated to spring boot successfully";
 	}
 
-	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName) {
+	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName) throws Exception {
 
 		// Get Document Builder
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder;
-		try {
-			builder = factory.newDocumentBuilder();
-			String sourceMuleFileName = getMuleFileLocation(sourceDir);
-			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
-			Document document = builder.parse(new File(sourceMuleXMLlocation));
-			document.getDocumentElement().normalize();
+		builder = factory.newDocumentBuilder();
+		String sourceMuleFileName = getMuleFileLocation(sourceDir);
+		String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
+		Document document = builder.parse(new File(sourceMuleXMLlocation));
+		document.getDocumentElement().normalize();
 
-			Map<String, String> xmlNamespaceMap = modifyXmlNameSpace(document);
+		Map<String, String> xmlNamespaceMap = modifyXmlNameSpace(document);
 
-			StringBuilder writeXml = getNamespaceValues(xmlNamespaceMap);
-			System.out.println(writeXml);
+		StringBuilder writeXml = getNamespaceValues(xmlNamespaceMap);
+		System.out.println(writeXml);
 
-			Map<String, String> flowArributeMap = getFlowAttribute(document);
+		Map<String, String> flowArributeMap = getFlowAttribute(document);
 
-		} catch (ParserConfigurationException e) {
-			e.printStackTrace();
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		} catch (SAXException e) {
-
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 
 	}
 
@@ -252,28 +242,35 @@ public class ProjectCreaterApplication {
 	}
 
 	@PostMapping("/multiProjectMigrate")
-	public String utilMultiProjectCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
+	public List<ResultModel> utilMultiProjectCall(@RequestBody SourceDestinationModel sourceDestModel) {
+		List<ResultModel> resultModelList = new ArrayList<ResultModel>();
+		ResultModel model = new ResultModel();
+		try {
+			String sourceMultiDir = sourceDestModel.getSource();
+			String destinationMultiDir = sourceDestModel.getDestination();
+			String sourceDir = "";
+			String destinationDir = "";
+			File[] directories = new File(sourceMultiDir).listFiles(File::isDirectory);
+			for (File localSourceDirectory : directories) {
+				sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
+				destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName();
+				String cmd = OPENAPI_CMD + destinationDir;
+				Process p = Runtime.getRuntime().exec(cmd);
+				Thread.sleep(8000);
 
-		String sourceMultiDir = sourceDestModel.getSource();
-		String destinationMultiDir = sourceDestModel.getDestination();
-		String sourceDir = "";
-		String destinationDir = "";
-		File[] directories = new File(sourceMultiDir).listFiles(File::isDirectory);
-		for (File localSourceDirectory : directories) {
-			sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
-			destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName();
-			String cmd = OPENAPI_CMD + destinationDir;
-			Process p = Runtime.getRuntime().exec(cmd);
-			Thread.sleep(8000);
-
-			directoryCleanUp(destinationDir);
-			String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
-			modifyPropFile(sourceDir, destinationDir);
-			modifyPOMFile(sourceDir, destinationDir);
-			createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
+				directoryCleanUp(destinationDir);
+				String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
+				modifyPropFile(sourceDir, destinationDir);
+				modifyPOMFile(sourceDir, destinationDir);
+				createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
+				model.setProjectName(localSourceDirectory.getName());
+				model.setSuccess(true);
+			}
+		}catch (Exception e) {
+			model.setSuccess(false);
 		}
-
-		return "Application migrated to spring boot successfully";
+		resultModelList.add(model);
+		return resultModelList;
 	}
 
 	private void directoryCleanUp(String destinationDir) throws IOException {
@@ -335,9 +332,8 @@ public class ProjectCreaterApplication {
 		file.renameTo(newJavafile);
 	}
 
-	public void modifyPropFile(String sourceDir, String destinationDir) {
+	public void modifyPropFile(String sourceDir, String destinationDir) throws Exception {
 
-		try {
 			String nodeVal = null;
 			String sourceMuleFileName = getMuleFileLocation(sourceDir);
 			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
@@ -397,9 +393,6 @@ public class ProjectCreaterApplication {
 			String destnAppPropLocation = getDirectoryNameForFile(destinationDir, APP_PROP);
 			writingLogic(destnAppPropLocation, sb, true);
 
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
 	private String getMuleFileLocation(String sourceDir) {
@@ -417,49 +410,39 @@ public class ProjectCreaterApplication {
 	}
 
 	public void modifyPOMFile(String sourceDir, String destinationDir)
-			throws URISyntaxException, FileNotFoundException, IOException, XmlPullParserException {
+			throws Exception {
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder;
-		try {
-			builder = factory.newDocumentBuilder();
-			String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, POM_XML);
-			Document document = builder.parse(new File(sourceMulePOMlocation));
-			document.getDocumentElement().normalize();
+		builder = factory.newDocumentBuilder();
+		String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, POM_XML);
+		Document document = builder.parse(new File(sourceMulePOMlocation));
+		document.getDocumentElement().normalize();
 
-			Element root = document.getDocumentElement();
+		Element root = document.getDocumentElement();
 
-			NodeList nList = document.getElementsByTagName("dependency");
-			ArrayList<String> siDependencyList = new ArrayList<>();
+		NodeList nList = document.getElementsByTagName("dependency");
+		ArrayList<String> siDependencyList = new ArrayList<>();
 
-			FileReader reader = new FileReader(
-					new File(getClass().getClassLoader().getResource(MULE_TO_SI_DEPENDECY_PROP).toURI()));
+		FileReader reader = new FileReader(
+				new File(getClass().getClassLoader().getResource(MULE_TO_SI_DEPENDECY_PROP).toURI()));
 
-			Properties propertiesFile = new Properties();
-			propertiesFile.load(reader);
+		Properties propertiesFile = new Properties();
+		propertiesFile.load(reader);
 
-			for (int temp = 0; temp < nList.getLength(); temp++) {
-				Node node = nList.item(temp);
+		for (int temp = 0; temp < nList.getLength(); temp++) {
+			Node node = nList.item(temp);
 
-				if (node.getNodeType() == Node.ELEMENT_NODE) {
-					Element elem = (Element) node;
-					Node muleNode = elem.getElementsByTagName("artifactId").item(0);
-					String dependencyName = propertiesFile.getProperty(muleNode.getTextContent());
-					if (dependencyName != null) {
-						siDependencyList.add(dependencyName);
-					}
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				Element elem = (Element) node;
+				Node muleNode = elem.getElementsByTagName("artifactId").item(0);
+				String dependencyName = propertiesFile.getProperty(muleNode.getTextContent());
+				if (dependencyName != null) {
+					siDependencyList.add(dependencyName);
 				}
 			}
-			writeDependenciestoDestnPOM(siDependencyList, destinationDir);
-
-		} catch (ParserConfigurationException e) {
-			e.printStackTrace();
-		} catch (SAXException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
-
+		writeDependenciestoDestnPOM(siDependencyList, destinationDir);
 		// modifyArtifact(sourceDir, destinationDir);
 	}
 
@@ -480,102 +463,94 @@ public class ProjectCreaterApplication {
 
 	private void createIntegrationFile(String sourceDir, String destinationDir, String mainBootFileName)
 			throws Exception {
-		try {
+		String sourceMuleFileName = getMuleFileLocation(sourceDir);
+		String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
 
-			String sourceMuleFileName = getMuleFileLocation(sourceDir);
-			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
+		XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
+		XMLEventReader reader = xmlInputFactory.createXMLEventReader(new FileInputStream(sourceMuleXMLlocation));
+		StringBuilder xmlStringBuilder = new StringBuilder();
+		xmlStringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
+				+ "<beans xmlns=\"http://www.springframework.org/schema/beans\"\r\n"
+				+ "       xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\r\n"
+				+ "       xmlns:jms=\"http://www.springframework.org/schema/integration/jms\"\r\n"
+				+ "       xmlns:integration=\"http://www.springframework.org/schema/integration\"\r\n"
+				+ "       xmlns:int-http=\"http://www.springframework.org/schema/integration/http\"\r\n"
+				+ "       xsi:schemaLocation=\"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd http://www.springframework.org/schema/integration/http\r\n"
+				+ "    http://www.springframework.org/schema/integration/http/spring-integration-http.xsd\">");
+		while (reader.hasNext()) {
+			XMLEvent nextEvent = reader.nextEvent();
+			if (nextEvent.isStartElement()) {
+				StartElement startElement = nextEvent.asStartElement();
+				String startTagName = startElement.getName().getLocalPart();
 
-			XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
-			XMLEventReader reader = xmlInputFactory.createXMLEventReader(new FileInputStream(sourceMuleXMLlocation));
-			StringBuilder xmlStringBuilder = new StringBuilder();
-			xmlStringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
-					+ "<beans xmlns=\"http://www.springframework.org/schema/beans\"\r\n"
-					+ "       xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\r\n"
-					+ "       xmlns:jms=\"http://www.springframework.org/schema/integration/jms\"\r\n"
-					+ "       xmlns:integration=\"http://www.springframework.org/schema/integration\"\r\n"
-					+ "       xmlns:int-http=\"http://www.springframework.org/schema/integration/http\"\r\n"
-					+ "       xsi:schemaLocation=\"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd http://www.springframework.org/schema/integration/http\r\n"
-					+ "    http://www.springframework.org/schema/integration/http/spring-integration-http.xsd\">");
-			while (reader.hasNext()) {
-				XMLEvent nextEvent = reader.nextEvent();
-				if (nextEvent.isStartElement()) {
-					StartElement startElement = nextEvent.asStartElement();
-					String startTagName = startElement.getName().getLocalPart();
+				switch (startTagName) {
 
-					switch (startTagName) {
-
-					case "listener":
-						xmlStringBuilder.append("\r\n");
-						xmlStringBuilder.append("<int-http:inbound-gateway\r\n"
-								+ "		request-channel=\"requestChannel\" reply-channel=\"outputChannel\"");
-						Iterator<Attribute> attributeList = startElement.getAttributes();
-						while (attributeList.hasNext()) {
-							Attribute attribute = attributeList.next();
-							String attributeName = attribute.getName().getLocalPart();
-							String attributeValue = attribute.getValue();
-							if (attributeName.equals("path")) {
-								xmlStringBuilder.append(" path=\"" + attributeValue + "\">");
-							}
-
+				case "listener":
+					xmlStringBuilder.append("\r\n");
+					xmlStringBuilder.append("<int-http:inbound-gateway\r\n"
+							+ "		request-channel=\"requestChannel\" reply-channel=\"outputChannel\"");
+					Iterator<Attribute> attributeList = startElement.getAttributes();
+					while (attributeList.hasNext()) {
+						Attribute attribute = attributeList.next();
+						String attributeName = attribute.getName().getLocalPart();
+						String attributeValue = attribute.getValue();
+						if (attributeName.equals("path")) {
+							xmlStringBuilder.append(" path=\"" + attributeValue + "\">");
 						}
-
-						xmlStringBuilder.append("</int-http:inbound-gateway>\r\n"
-								+ "	<integration:channel id=\"requestChannel\"/>\r\n"
-								+ "    <integration:channel id=\"outputChannel\"/>");
-
-						break;
-
-					case "publish":
-						xmlStringBuilder.append("\r\n");
-						xmlStringBuilder.append(
-								"<jms:message-driven-channel-adapter id=\"helloJMSAdapater\" destination-name=\"hello.queue\"\r\n"
-										+ "        channel=\"inbound\"/>\r\n" + "\r\n"
-										+ "    <integration:channel id=\"inbound\"/>\r\n"
-										+ "    <integration:channel id=\"outbound\"/>\r\n"
-										+ "    <integration:service-activator input-channel=\"requestChannel\" output-channel=\"outbound\" ref=\"simpleMessageListener\" method=\"onMessage\" />\r\n"
-										+ "    <jms:outbound-channel-adapter id=\"jmsOut\" channel=\"outbound\"");
-
-						Iterator<Attribute> attributeList2 = startElement.getAttributes();
-						while (attributeList2.hasNext()) {
-							Attribute attribute = attributeList2.next();
-							String attributeName = attribute.getName().getLocalPart();
-							String attributeValue = attribute.getValue();
-							if (attributeName.equals("destination")) {
-								xmlStringBuilder.append(" destination-name=\"" + attributeValue + "\"");
-							}
-
-						}
-
-						xmlStringBuilder.append("/>");
-
-						break;
 
 					}
 
+					xmlStringBuilder.append("</int-http:inbound-gateway>\r\n"
+							+ "	<integration:channel id=\"requestChannel\"/>\r\n"
+							+ "    <integration:channel id=\"outputChannel\"/>");
+
+					break;
+
+				case "publish":
+					xmlStringBuilder.append("\r\n");
+					xmlStringBuilder.append(
+							"<jms:message-driven-channel-adapter id=\"helloJMSAdapater\" destination-name=\"hello.queue\"\r\n"
+									+ "        channel=\"inbound\"/>\r\n" + "\r\n"
+									+ "    <integration:channel id=\"inbound\"/>\r\n"
+									+ "    <integration:channel id=\"outbound\"/>\r\n"
+									+ "    <integration:service-activator input-channel=\"requestChannel\" output-channel=\"outbound\" ref=\"simpleMessageListener\" method=\"onMessage\" />\r\n"
+									+ "    <jms:outbound-channel-adapter id=\"jmsOut\" channel=\"outbound\"");
+
+					Iterator<Attribute> attributeList2 = startElement.getAttributes();
+					while (attributeList2.hasNext()) {
+						Attribute attribute = attributeList2.next();
+						String attributeName = attribute.getName().getLocalPart();
+						String attributeValue = attribute.getValue();
+						if (attributeName.equals("destination")) {
+							xmlStringBuilder.append(" destination-name=\"" + attributeValue + "\"");
+						}
+
+					}
+
+					xmlStringBuilder.append("/>");
+
+					break;
+
 				}
 
-				if (nextEvent.isEndElement()) {
-					EndElement endElement = nextEvent.asEndElement();
-					String endTagName = endElement.getName().getLocalPart();
-					if (endTagName.equals("mule")) {
-						xmlStringBuilder.append("</beans>");
-					}
-				}
 			}
 
-			createIntegrationXMLFile(xmlStringBuilder, destinationDir);
-
-			createListnerFile(destinationDir, mainBootFileName);
-
+			if (nextEvent.isEndElement()) {
+				EndElement endElement = nextEvent.asEndElement();
+				String endTagName = endElement.getName().getLocalPart();
+				if (endTagName.equals("mule")) {
+					xmlStringBuilder.append("</beans>");
+				}
+			}
 		}
 
-		catch (XMLStreamException | IOException e) {
-			e.printStackTrace();
-		}
+		createIntegrationXMLFile(xmlStringBuilder, destinationDir);
+
+		createListnerFile(destinationDir, mainBootFileName);
 
 	}
 
-	private void createListnerFile(String destinationDir, String mainBootFileName) throws Exception, IOException {
+	private void createListnerFile(String destinationDir, String mainBootFileName) throws Exception {
 
 		String destnListnerLocation = getDirectoryNameForFile(destinationDir, mainBootFileName + ".java");
 		destnListnerLocation = destnListnerLocation.replace("\\" + mainBootFileName + ".java", "");
@@ -585,47 +560,28 @@ public class ProjectCreaterApplication {
 		sb.append("package com.lti;\n" + "\n" + "import org.springframework.stereotype.Component;\n" + "\n"
 				+ "@Component\n" + "public class SimpleMessageListener {\n" + "\n" + "	public String onMessage() {\n"
 				+ "		\n" + "		return \"Published\";\n" + "	}\n" + "	\n" + "}");
-		try {
 
-			listnerWriter = new BufferedWriter(new FileWriter(listnerFile));
-			listnerWriter.append(sb);
+		listnerWriter = new BufferedWriter(new FileWriter(listnerFile));
+		listnerWriter.append(sb);
 
-		}
-
-		catch (Exception e) {
-			throw e;
-		}
-
-		finally {
-			if (listnerWriter != null)
-				listnerWriter.close();
-		}
+		listnerWriter.close();
 	}
 
 	private void createIntegrationXMLFile(StringBuilder xmlStringBuilder, String destinationDir)
-			throws Exception, IOException {
+			throws Exception {
 		String destnResourceLocation = getDirectoryNameForFile(destinationDir, "resources");
 
 		String fileName = destnResourceLocation + "//" + destnSpringIntFileName;
 		File file = new File(fileName);
 		BufferedWriter writer = null;
-		try {
-			writer = new BufferedWriter(new FileWriter(file));
-			writer.append(xmlStringBuilder);
-		}
+		writer = new BufferedWriter(new FileWriter(file));
+		writer.append(xmlStringBuilder);
 
-		catch (Exception e) {
-			throw e;
-		}
-
-		finally {
-			if (writer != null)
-				writer.close();
-		}
+		writer.close();
 	}
 
 	public void writeDependenciestoDestnPOM(ArrayList<String> siDependencyList, String destinationDir)
-			throws ParserConfigurationException, SAXException, IOException {
+			throws Exception {
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
@@ -644,7 +600,6 @@ public class ProjectCreaterApplication {
 			node.appendChild(root.appendChild(createDependency(document, depencyName)));
 		}
 
-		try {
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
 			Transformer transf = transformerFactory.newTransformer();
 			transf.setOutputProperty(OutputKeys.INDENT, "yes");
@@ -656,9 +611,6 @@ public class ProjectCreaterApplication {
 
 			transf.transform(source, console);
 			transf.transform(source, file);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 
 	}
 
@@ -709,75 +661,64 @@ public class ProjectCreaterApplication {
 		return value;
 	}
 
-	private void createDynamicIntegrationFile(String sourceDir, String destinationDir) {
+	private void createDynamicIntegrationFile(String sourceDir, String destinationDir) throws Exception {
 
 		// Get Document Builder
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder;
-		try {
-			builder = factory.newDocumentBuilder();
-			String sourceMuleFileName = getMuleFileLocation(sourceDir);
-			String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
-			Document document = builder.parse(new File(sourceMulePOMlocation));
-			document.getDocumentElement().normalize();
+		builder = factory.newDocumentBuilder();
+		String sourceMuleFileName = getMuleFileLocation(sourceDir);
+		String sourceMulePOMlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
+		Document document = builder.parse(new File(sourceMulePOMlocation));
+		document.getDocumentElement().normalize();
 
-			NodeList muleTagList = document.getElementsByTagName("mule");
-			Map<String, String> xmlNamespaceMap = new HashMap<>();
-			xmlNamespaceMap.put("xmlns:integration", "\"http://www.springframework.org/schema/integration\"");
+		NodeList muleTagList = document.getElementsByTagName("mule");
+		Map<String, String> xmlNamespaceMap = new HashMap<>();
+		xmlNamespaceMap.put("xmlns:integration", "\"http://www.springframework.org/schema/integration\"");
 
-			FileReader reader = new FileReader(
-					new File(getClass().getClassLoader().getResource("muletosimapping.properties").toURI()));
+		FileReader reader = new FileReader(
+				new File(getClass().getClassLoader().getResource("muletosimapping.properties").toURI()));
 
-			Properties propertiesFile = new Properties();
-			propertiesFile.load(reader);
+		Properties propertiesFile = new Properties();
+		propertiesFile.load(reader);
 
-			Node node = muleTagList.item(0);
+		Node node = muleTagList.item(0);
 
-			if (node.getNodeType() == Node.ELEMENT_NODE) {
-				Node theAttribute = null;
-				String muleXmlNameSpace = null;
-				String springNameSpace = null;
-				NamedNodeMap attributes = node.getAttributes();
-				for (int a = 0; a < attributes.getLength(); a++) {
-					theAttribute = attributes.item(a);
-					muleXmlNameSpace = theAttribute.getNodeName().replace(":", "-");
-					springNameSpace = propertiesFile.getProperty(muleXmlNameSpace);
-					if (springNameSpace != null) {
-						String[] splitNameSpace = springNameSpace.split(",");
-						xmlNamespaceMap.put(splitNameSpace[0], splitNameSpace[1]);
-					}
-
+		if (node.getNodeType() == Node.ELEMENT_NODE) {
+			Node theAttribute = null;
+			String muleXmlNameSpace = null;
+			String springNameSpace = null;
+			NamedNodeMap attributes = node.getAttributes();
+			for (int a = 0; a < attributes.getLength(); a++) {
+				theAttribute = attributes.item(a);
+				muleXmlNameSpace = theAttribute.getNodeName().replace(":", "-");
+				springNameSpace = propertiesFile.getProperty(muleXmlNameSpace);
+				if (springNameSpace != null) {
+					String[] splitNameSpace = springNameSpace.split(",");
+					xmlNamespaceMap.put(splitNameSpace[0], splitNameSpace[1]);
 				}
 
-				System.out.println(xmlNamespaceMap);
-
 			}
 
-			NodeList flowTagList = document.getElementsByTagName("flow");
+			System.out.println(xmlNamespaceMap);
 
-			NodeList flowNode = flowTagList.item(0).getChildNodes();
-//			NodeList nodes= flowNode.getChildNodes();
-			System.out.println(flowNode.getLength());
-			for (int i = 0; i < flowNode.getLength(); i++) {
-				Node childNode = (Node) flowNode.item(i);
-				System.out.println("Node Name : " + childNode.getNodeName());
-				System.out.println("Node getNodeType : " + childNode.getNodeType());
-				System.out.println("Node getNextSibling : " + childNode.getNextSibling());
-				System.out.println("Node getTextContent : " + childNode.getTextContent());
-				System.out.println("Node getNodeValue : " + childNode.getNodeValue());
-				System.out.println("Node getNamespaceURI : " + childNode.getNamespaceURI());
-			}
-
-		} catch (ParserConfigurationException e) {
-			e.printStackTrace();
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		} catch (SAXException e) {
-
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
+
+		NodeList flowTagList = document.getElementsByTagName("flow");
+
+		NodeList flowNode = flowTagList.item(0).getChildNodes();
+		//			NodeList nodes= flowNode.getChildNodes();
+		System.out.println(flowNode.getLength());
+		for (int i = 0; i < flowNode.getLength(); i++) {
+			Node childNode = (Node) flowNode.item(i);
+			System.out.println("Node Name : " + childNode.getNodeName());
+			System.out.println("Node getNodeType : " + childNode.getNodeType());
+			System.out.println("Node getNextSibling : " + childNode.getNextSibling());
+			System.out.println("Node getTextContent : " + childNode.getTextContent());
+			System.out.println("Node getNodeValue : " + childNode.getNodeValue());
+			System.out.println("Node getNamespaceURI : " + childNode.getNamespaceURI());
+		}
+
 
 	}
 
