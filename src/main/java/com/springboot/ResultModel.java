@@ -4,13 +4,16 @@ public class ResultModel {
 	
 	private String projectName;
 	private boolean success;
+	private String error;
 	
-	public ResultModel(String projectName, boolean success) {
+	
+
+	public ResultModel(String projectName, boolean success, String error) {
 		super();
 		this.projectName = projectName;
 		this.success = success;
+		this.error = error;
 	}
-
 
 	public ResultModel() {}
 
@@ -29,6 +32,16 @@ public class ResultModel {
 	public void setSuccess(boolean success) {
 		this.success = success;
 	}
+
+	public String getError() {
+		return error;
+	}
+
+	public void setError(String error) {
+		this.error = error;
+	}
+	
+	
 
 	
 	

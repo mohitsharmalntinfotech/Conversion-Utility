@@ -135,8 +135,9 @@ public class ProjectCreaterApplication {
 			
 			cloneDestinationGitRepoAndCommit(destinationRepo,destinationMultiDir,gitFolder);
 			
-		} catch (Exception e) {
+		} catch (Exception ex) {
 			model.setSuccess(false);
+			model.setError(ex.getMessage());
 		}
 		resultModelList.add(model);
 		return resultModelList;
