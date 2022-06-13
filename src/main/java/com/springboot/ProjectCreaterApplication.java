@@ -21,7 +21,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -33,10 +36,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.EndElement;
 import javax.xml.stream.events.StartElement;
@@ -54,6 +55,7 @@ import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.NoMessageException;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -69,7 +71,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 @SpringBootApplication
 @RestController
@@ -716,7 +717,7 @@ public class ProjectCreaterApplication {
 
 	}
 
-	/*Clone Private Repository*/
+	/* Clone Private Repository */
 	private static void cloneSourceGitRepo() throws GitAPIException {
 		// String repoUrl =
 		// "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
@@ -735,21 +736,39 @@ public class ProjectCreaterApplication {
 		return new UsernamePasswordCredentialsProvider(user, password);
 	}
 
-	private static void cloneSourceGitRepoAndCommit() {
-		String repoUrl = "https://github.com/mohitsharmalntinfotech/demo1.git";
-		String cloneDirectoryPath = "D:\\destination"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
-		try {
-			System.out.println("Cloning " + repoUrl + " into " + repoUrl);
-			Git git = Git.cloneRepository().setURI(repoUrl).setDirectory(Paths.get(cloneDirectoryPath).toFile()).call();
-			System.out.println("Completed Cloning");
+	/* Clone Public Repository and commit */
+	private static void cloneSourceGitRepoAndCommit() throws GitAPIException, NoMessageException {
+		String repoUrl = "https://github.com/RaviGyanSingh1/TestPublic.git";
+		String cloneDirectoryPath = "C:\\destination"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
+		System.out.println("Cloning " + repoUrl + " into " + repoUrl);
+		Git git = Git.cloneRepository().setURI(repoUrl).setDirectory(Paths.get(cloneDirectoryPath).toFile()).call();
+		System.out.println("Completed Cloning");
 
-			System.out.println("Created repository: " + git.getRepository().getDirectory());
-			git.add().addFilepattern("abc.txt").call();
-			git.commit().setMessage("second commit").call();
-			git.push().call();
-		} catch (Exception e) {
-			// TODO: handle exception
-		}
+		System.out.println("Created repository: " + git.getRepository().getDirectory());
+		// Git gitOpen = Git.open(new File(cloneDirectoryPath));
+		// gitOpen.pull().call();
+		git.add().addFilepattern(".").call();
+		git.commit().setMessage("new commit").call();
+		git.push().setCredentialsProvider(configAuthentication("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", "")).call();
+		System.out.println("Completed push");
+	}
+
+	/* Copy Files from Destination to LocalRepository */
+	private static void copyFiles() throws IOException {
+		Path sourceDir = Paths.get("C:\\your");
+		Path destinationDir = Paths.get("C:\\destination");
+
+		// Traverse the file tree and copy each file/directory.
+		Files.walk(sourceDir).forEach(sourcePath -> {
+			try {
+				Path targetPath = destinationDir.resolve(sourceDir.relativize(sourcePath));
+				System.out.printf("Copying %s to %s%n", sourcePath, targetPath);
+				Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+			} catch (IOException ex) {
+				System.out.format("I/O error: %s%n", ex);
+			}
+		});
+
 	}
 
 }
