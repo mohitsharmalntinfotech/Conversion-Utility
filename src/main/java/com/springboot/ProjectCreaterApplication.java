@@ -1,16 +1,6 @@
 package com.springboot;
 
-import static com.springboot.constant.UtilConstant.APP_PROP;
-import static com.springboot.constant.UtilConstant.CONFIG_FILE_FOR_APP_PROP;
-import static com.springboot.constant.UtilConstant.IMPORT_RESOURCE_STATMNT;
-import static com.springboot.constant.UtilConstant.MULE_TO_SI_DEPENDECY_PROP;
-import static com.springboot.constant.UtilConstant.OPENAPI_CMD;
-import static com.springboot.constant.UtilConstant.OPENAPI_CONFIG_CLASS;
-import static com.springboot.constant.UtilConstant.OPENAPI_HEALTH_CLASS;
-import static com.springboot.constant.UtilConstant.OPENAPI_SPRINGBOOT_CLASS;
-import static com.springboot.constant.UtilConstant.PACKAGE_NAME;
-import static com.springboot.constant.UtilConstant.POM_XML;
-import static com.springboot.constant.UtilConstant.SPRINGBOOT_ANNOTATION_NAME;
+import static com.springboot.constant.UtilConstant.*;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -325,10 +315,14 @@ public class ProjectCreaterApplication {
 		destnConfigDeleteLocation = destnConfigDeleteLocation.replace("\\" + OPENAPI_CONFIG_CLASS, "");
 		String destnAPIDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_HEALTH_CLASS);
 		destnAPIDeleteLocation = destnAPIDeleteLocation.replace("\\" + OPENAPI_HEALTH_CLASS, "");
+		String destnFormatterLocation = getDirectoryNameForFile(destinationDir, FORMATTER_CLASS);
+		destnFormatterLocation = destnFormatterLocation.replace("\\" + FORMATTER_CLASS, "");
 		File fileDirectoryConfig = new File(destnConfigDeleteLocation);
 		File fileDirectoryAPI = new File(destnAPIDeleteLocation);
+		File fileDirectoryFormatter = new File(destnFormatterLocation);
 		FileUtils.deleteDirectory(fileDirectoryConfig);
 		FileUtils.deleteDirectory(fileDirectoryAPI);
+		FileUtils.deleteDirectory(fileDirectoryFormatter);
 
 	}
 

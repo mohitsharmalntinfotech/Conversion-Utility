@@ -8,6 +8,7 @@ public class UtilConstant {
 	public static final String OPENAPI_CMD = "java -jar openapi-generator-cli-4.3.1.jar generate -g spring -i openapi.yaml -c conf.json -o ";
 	public static final String OPENAPI_CONFIG_CLASS = "OpenAPIDocumentationConfig.java";
 	public static final String OPENAPI_HEALTH_CLASS = "HealthApiController.java";
+	public static final String FORMATTER_CLASS = "RFC3339DateFormat.java";
 	public static final String OPENAPI_SPRINGBOOT_CLASS = "OpenAPI2SpringBoot";
 	public static final String APP_PROP = "application.properties";
 	public static final String POM_XML = "pom.xml";
