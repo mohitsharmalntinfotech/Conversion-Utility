@@ -91,7 +91,7 @@ public class ProjectCreaterApplication {
 	}
 
 	@GetMapping("/git")
-	void gitdemo() {
+	void gitdemo() throws GitAPIException {
 		cloneSourceGitRepo();
 	}
 
@@ -114,7 +114,8 @@ public class ProjectCreaterApplication {
 		return "Application migrated to spring boot successfully";
 	}
 
-	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName) throws Exception {
+	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName)
+			throws Exception {
 
 		// Get Document Builder
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -131,7 +132,6 @@ public class ProjectCreaterApplication {
 		System.out.println(writeXml);
 
 		Map<String, String> flowArributeMap = getFlowAttribute(document);
-
 
 	}
 
@@ -266,7 +266,7 @@ public class ProjectCreaterApplication {
 				model.setProjectName(localSourceDirectory.getName());
 				model.setSuccess(true);
 			}
-		}catch (Exception e) {
+		} catch (Exception e) {
 			model.setSuccess(false);
 		}
 		resultModelList.add(model);
@@ -334,64 +334,61 @@ public class ProjectCreaterApplication {
 
 	public void modifyPropFile(String sourceDir, String destinationDir) throws Exception {
 
-			String nodeVal = null;
-			String sourceMuleFileName = getMuleFileLocation(sourceDir);
-			String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
-			File fXmlFile = new File(sourceMuleXMLlocation);
-			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-			Document doc = dBuilder.parse(fXmlFile);
-			doc.getDocumentElement().normalize();
+		String nodeVal = null;
+		String sourceMuleFileName = getMuleFileLocation(sourceDir);
+		String sourceMuleXMLlocation = getDirectoryNameForFile(sourceDir, sourceMuleFileName);
+		File fXmlFile = new File(sourceMuleXMLlocation);
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(fXmlFile);
+		doc.getDocumentElement().normalize();
 
-			ConcurrentHashMap<String, ConcurrentHashMap<String, String>> outerMap = new ConcurrentHashMap<String, ConcurrentHashMap<String, String>>();
-			FileReader fr = new FileReader(
-					new File(getClass().getClassLoader().getResource(CONFIG_FILE_FOR_APP_PROP).toURI()));
-			BufferedReader br = new BufferedReader(fr);
-			String line = null;
-			while ((line = br.readLine()) != null) {
-				ConcurrentHashMap<String, String> innerMap = new ConcurrentHashMap<String, String>();
-				String[] arr = line.split("=");
-				String nodeName = arr[0];
-				String attrList = arr[1];
-				String[] attrArray = attrList.split(",");
-				for (String attrName : attrArray) {
-					innerMap.put(attrName, "");
+		ConcurrentHashMap<String, ConcurrentHashMap<String, String>> outerMap = new ConcurrentHashMap<String, ConcurrentHashMap<String, String>>();
+		FileReader fr = new FileReader(
+				new File(getClass().getClassLoader().getResource(CONFIG_FILE_FOR_APP_PROP).toURI()));
+		BufferedReader br = new BufferedReader(fr);
+		String line = null;
+		while ((line = br.readLine()) != null) {
+			ConcurrentHashMap<String, String> innerMap = new ConcurrentHashMap<String, String>();
+			String[] arr = line.split("=");
+			String nodeName = arr[0];
+			String attrList = arr[1];
+			String[] attrArray = attrList.split(",");
+			for (String attrName : attrArray) {
+				innerMap.put(attrName, "");
+			}
+			outerMap.put(nodeName, innerMap);
+		}
+
+		for (String nodeName : outerMap.keySet()) {
+			ConcurrentHashMap<String, String> localInnerMap = outerMap.get(nodeName);
+			for (String nodeAttr : localInnerMap.keySet()) {
+				nodeVal = documentParserValue(doc, nodeName, nodeAttr);
+				localInnerMap.put(nodeAttr, nodeVal);
+			}
+			outerMap.put(nodeName, localInnerMap);
+		}
+
+		StringBuffer sb = new StringBuffer();
+		for (String nodeName : outerMap.keySet()) {
+			ConcurrentHashMap<String, String> localInnerMap = outerMap.get(nodeName);
+			for (String nodeAttr : localInnerMap.keySet()) {
+
+				if (nodeName.equalsIgnoreCase("jms:factory-configuration") && nodeAttr.equalsIgnoreCase("brokerUrl")) {
+					sb.append("spring.activemq.broker-url=").append(localInnerMap.get(nodeAttr)).append('\n');
 				}
-				outerMap.put(nodeName, innerMap);
+				if (nodeName.equalsIgnoreCase("jms:active-mq-connection") && nodeAttr.equalsIgnoreCase("username")) {
+					sb.append("spring.activemq.user=").append(localInnerMap.get(nodeAttr)).append('\n');
+				}
+				if (nodeName.equalsIgnoreCase("jms:active-mq-connection") && nodeAttr.equalsIgnoreCase("password")) {
+					sb.append("spring.activemq.password=").append(localInnerMap.get(nodeAttr)).append('\n');
+				}
 			}
 
-			for (String nodeName : outerMap.keySet()) {
-				ConcurrentHashMap<String, String> localInnerMap = outerMap.get(nodeName);
-				for (String nodeAttr : localInnerMap.keySet()) {
-					nodeVal = documentParserValue(doc, nodeName, nodeAttr);
-					localInnerMap.put(nodeAttr, nodeVal);
-				}
-				outerMap.put(nodeName, localInnerMap);
-			}
+		}
 
-			StringBuffer sb = new StringBuffer();
-			for (String nodeName : outerMap.keySet()) {
-				ConcurrentHashMap<String, String> localInnerMap = outerMap.get(nodeName);
-				for (String nodeAttr : localInnerMap.keySet()) {
-
-					if (nodeName.equalsIgnoreCase("jms:factory-configuration")
-							&& nodeAttr.equalsIgnoreCase("brokerUrl")) {
-						sb.append("spring.activemq.broker-url=").append(localInnerMap.get(nodeAttr)).append('\n');
-					}
-					if (nodeName.equalsIgnoreCase("jms:active-mq-connection")
-							&& nodeAttr.equalsIgnoreCase("username")) {
-						sb.append("spring.activemq.user=").append(localInnerMap.get(nodeAttr)).append('\n');
-					}
-					if (nodeName.equalsIgnoreCase("jms:active-mq-connection")
-							&& nodeAttr.equalsIgnoreCase("password")) {
-						sb.append("spring.activemq.password=").append(localInnerMap.get(nodeAttr)).append('\n');
-					}
-				}
-
-			}
-
-			String destnAppPropLocation = getDirectoryNameForFile(destinationDir, APP_PROP);
-			writingLogic(destnAppPropLocation, sb, true);
+		String destnAppPropLocation = getDirectoryNameForFile(destinationDir, APP_PROP);
+		writingLogic(destnAppPropLocation, sb, true);
 
 	}
 
@@ -409,8 +406,7 @@ public class ProjectCreaterApplication {
 		return file;
 	}
 
-	public void modifyPOMFile(String sourceDir, String destinationDir)
-			throws Exception {
+	public void modifyPOMFile(String sourceDir, String destinationDir) throws Exception {
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder;
@@ -500,9 +496,9 @@ public class ProjectCreaterApplication {
 
 					}
 
-					xmlStringBuilder.append("</int-http:inbound-gateway>\r\n"
-							+ "	<integration:channel id=\"requestChannel\"/>\r\n"
-							+ "    <integration:channel id=\"outputChannel\"/>");
+					xmlStringBuilder.append(
+							"</int-http:inbound-gateway>\r\n" + "	<integration:channel id=\"requestChannel\"/>\r\n"
+									+ "    <integration:channel id=\"outputChannel\"/>");
 
 					break;
 
@@ -567,8 +563,7 @@ public class ProjectCreaterApplication {
 		listnerWriter.close();
 	}
 
-	private void createIntegrationXMLFile(StringBuilder xmlStringBuilder, String destinationDir)
-			throws Exception {
+	private void createIntegrationXMLFile(StringBuilder xmlStringBuilder, String destinationDir) throws Exception {
 		String destnResourceLocation = getDirectoryNameForFile(destinationDir, "resources");
 
 		String fileName = destnResourceLocation + "//" + destnSpringIntFileName;
@@ -600,17 +595,17 @@ public class ProjectCreaterApplication {
 			node.appendChild(root.appendChild(createDependency(document, depencyName)));
 		}
 
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-			Transformer transf = transformerFactory.newTransformer();
-			transf.setOutputProperty(OutputKeys.INDENT, "yes");
+		TransformerFactory transformerFactory = TransformerFactory.newInstance();
+		Transformer transf = transformerFactory.newTransformer();
+		transf.setOutputProperty(OutputKeys.INDENT, "yes");
 
-			DOMSource source = new DOMSource(document);
+		DOMSource source = new DOMSource(document);
 
-			StreamResult console = new StreamResult(System.out);
-			StreamResult file = new StreamResult(myFile);
+		StreamResult console = new StreamResult(System.out);
+		StreamResult file = new StreamResult(myFile);
 
-			transf.transform(source, console);
-			transf.transform(source, file);
+		transf.transform(source, console);
+		transf.transform(source, file);
 
 	}
 
@@ -707,7 +702,7 @@ public class ProjectCreaterApplication {
 		NodeList flowTagList = document.getElementsByTagName("flow");
 
 		NodeList flowNode = flowTagList.item(0).getChildNodes();
-		//			NodeList nodes= flowNode.getChildNodes();
+		// NodeList nodes= flowNode.getChildNodes();
 		System.out.println(flowNode.getLength());
 		for (int i = 0; i < flowNode.getLength(); i++) {
 			Node childNode = (Node) flowNode.item(i);
@@ -719,24 +714,20 @@ public class ProjectCreaterApplication {
 			System.out.println("Node getNamespaceURI : " + childNode.getNamespaceURI());
 		}
 
-
 	}
 
-	private static void cloneSourceGitRepo() {
+	private static void cloneSourceGitRepo() throws GitAPIException {
 		// String repoUrl =
 		// "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
-		String repoUrl = "https://github.com/mohitsharmalntinfotech/privateRepo.git";
+		String repoUrl = "https://github.com/RaviGyanSingh1/testprivate.git";
 
-		String cloneDirectoryPath = "D:\\path"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
-		try {
-			System.out.println("Cloning " + repoUrl + " into " + repoUrl);
-			Git.cloneRepository().setURI(repoUrl).setDirectory(Paths.get(cloneDirectoryPath).toFile())
-					.setCredentialsProvider(configAuthentication("mohitsharmalntinfotech", "Mkbwdatc12*")).call();
-			System.out.println("Completed Cloning");
-		} catch (GitAPIException e) {
-			System.out.println("Exception occurred while cloning repo");
-			e.printStackTrace();
-		}
+		String cloneDirectoryPath = "C:\\privaterepo"; // Ex.in windows c:\\gitProjects\SpringBootMongoDbCRUD\
+		File localPath = new File(cloneDirectoryPath);
+		System.out.println("Cloning " + repoUrl + " into " + repoUrl);
+		Git.cloneRepository().setURI(repoUrl)
+				.setCredentialsProvider(configAuthentication("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", ""))
+				.setDirectory(localPath).call();
+		System.out.println("Completed Cloning");
 	}
 
 	private static UsernamePasswordCredentialsProvider configAuthentication(String user, String password) {
