@@ -716,6 +716,7 @@ public class ProjectCreaterApplication {
 
 	}
 
+	/*Clone Private Repository*/
 	private static void cloneSourceGitRepo() throws GitAPIException {
 		// String repoUrl =
 		// "https://github.com/mohitsharmalntinfotech/Conversion-Utility.git";
@@ -725,7 +726,7 @@ public class ProjectCreaterApplication {
 		File localPath = new File(cloneDirectoryPath);
 		System.out.println("Cloning " + repoUrl + " into " + repoUrl);
 		Git.cloneRepository().setURI(repoUrl)
-				.setCredentialsProvider(configAuthentication("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", ""))
+				.setCredentialsProvider(configAuthentication("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", ""))
 				.setDirectory(localPath).call();
 		System.out.println("Completed Cloning");
 	}
