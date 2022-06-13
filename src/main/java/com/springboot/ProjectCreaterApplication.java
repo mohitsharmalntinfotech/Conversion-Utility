@@ -1,6 +1,17 @@
 package com.springboot;
 
-import static com.springboot.constant.UtilConstant.*;
+import static com.springboot.constant.UtilConstant.APP_PROP;
+import static com.springboot.constant.UtilConstant.CONFIG_FILE_FOR_APP_PROP;
+import static com.springboot.constant.UtilConstant.FORMATTER_CLASS;
+import static com.springboot.constant.UtilConstant.IMPORT_RESOURCE_STATMNT;
+import static com.springboot.constant.UtilConstant.MULE_TO_SI_DEPENDECY_PROP;
+import static com.springboot.constant.UtilConstant.OPENAPI_CMD;
+import static com.springboot.constant.UtilConstant.OPENAPI_CONFIG_CLASS;
+import static com.springboot.constant.UtilConstant.OPENAPI_HEALTH_CLASS;
+import static com.springboot.constant.UtilConstant.OPENAPI_SPRINGBOOT_CLASS;
+import static com.springboot.constant.UtilConstant.PACKAGE_NAME;
+import static com.springboot.constant.UtilConstant.POM_XML;
+import static com.springboot.constant.UtilConstant.SPRINGBOOT_ANNOTATION_NAME;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

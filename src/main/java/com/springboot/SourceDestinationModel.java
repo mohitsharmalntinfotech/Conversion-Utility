@@ -5,8 +5,6 @@ public class SourceDestinationModel {
 	String source;
 	String destination;
 	
-	ConfigurationModel conf;
-
 	public SourceDestinationModel(String source, String destination) {
 		this.source = source;
 		this.destination = destination;
@@ -28,14 +26,6 @@ public class SourceDestinationModel {
 		this.destination = destination;
 	}
 
-	public ConfigurationModel getConf() {
-		return conf;
-	}
-
-	public void setConf(ConfigurationModel conf) {
-		this.conf = conf;
-	}
-	
 	
 
 }
