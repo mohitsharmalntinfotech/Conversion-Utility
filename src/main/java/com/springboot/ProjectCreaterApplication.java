@@ -92,31 +92,31 @@ public class ProjectCreaterApplication {
 	}
 
 	@PostMapping("/multiProjectMigrateWithGIT")
-	public List<ResultModel> utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel, @RequestHeader(value = "token", required = false) String token) {
+	public List<ResultModel> utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel,
+			@RequestHeader(value = "token", required = false) String token) {
 		List<ResultModel> resultModelList = new ArrayList<ResultModel>();
 		ResultModel model = new ResultModel();
 		try {
-			
+
 			String sourceRepo = sourceDestModel.getSource();
 			String destinationRepo = sourceDestModel.getDestination();
-			
-			String sourceMultiDir = "D:\\Source";
-			String destinationMultiDir = "D:\\DesDir";
-			String gitFolder = "D:\\Destination";
-			
-			cloneSourceGitRepo(sourceRepo,sourceMultiDir,token);
-			
+
+			String sourceMultiDir = "C:\\Source";
+			String destinationMultiDir = "C:\\DesDir";
+			String gitFolder = "C:\\Destination";
+
+			cloneSourceGitRepo(sourceRepo, sourceMultiDir, token);
+
 			String sourceDir = "";
 			String destinationDir = "";
 			File[] directories = new File(sourceMultiDir).listFiles(new FileFilter() {
-			    @Override
-			    public boolean accept(File file) {
-			    	if(file.getName().equalsIgnoreCase(".git")) {
-			    		return false;
-			    	}
-			    	else
-			        return file.isDirectory();
-			    }
+				@Override
+				public boolean accept(File file) {
+					if (file.getName().equalsIgnoreCase(".git")) {
+						return false;
+					} else
+						return file.isDirectory();
+				}
 			});
 			for (File localSourceDirectory : directories) {
 				sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
@@ -133,9 +133,9 @@ public class ProjectCreaterApplication {
 				model.setProjectName(localSourceDirectory.getName());
 				model.setSuccess(true);
 			}
-			
-			cloneDestinationGitRepoAndCommit(destinationRepo,destinationMultiDir,gitFolder,token);
-			
+
+			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, token);
+
 		} catch (Exception ex) {
 			model.setSuccess(false);
 			model.setError(ex.getMessage());
@@ -143,8 +143,7 @@ public class ProjectCreaterApplication {
 		resultModelList.add(model);
 		return resultModelList;
 	}
-	
-	
+
 	@PostMapping("/migrate")
 	public String utilCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
 		String sourceDir = sourceDestModel.getSource();
@@ -769,10 +768,10 @@ public class ProjectCreaterApplication {
 
 	}
 
-	private static void cloneSourceGitRepo(String sourceRepoUrl, String clonedSourceDirectory, String token) throws Exception {
+	private static void cloneSourceGitRepo(String sourceRepoUrl, String clonedSourceDirectory, String token)
+			throws Exception {
 		File localPath = new File(clonedSourceDirectory);
-		Git.cloneRepository().setURI(sourceRepoUrl)
-				.setCredentialsProvider(configAuthentication(token, ""))
+		Git.cloneRepository().setURI(sourceRepoUrl).setCredentialsProvider(configAuthentication(token, ""))
 				.setDirectory(localPath).call();
 	}
 
@@ -780,12 +779,15 @@ public class ProjectCreaterApplication {
 		return new UsernamePasswordCredentialsProvider(user, password);
 	}
 
-	private static void cloneDestinationGitRepoAndCommit(String destinationRepoUrl, String destinationFolder, String gitFolder, String token) throws Exception {
+	private static void cloneDestinationGitRepoAndCommit(String destinationRepoUrl, String destinationFolder,
+			String gitFolder, String token) throws Exception {
 		Git git = Git.cloneRepository().setURI(destinationRepoUrl)
-				.setDirectory(Paths.get(gitFolder).toFile()).call();
-		copyFiles(destinationFolder,gitFolder); //copy generated projects from local destination folder to GIT folder for commit
+				.setCredentialsProvider(configAuthentication(token, "")).setDirectory(Paths.get(gitFolder).toFile())
+				.call();
+		copyFiles(destinationFolder, gitFolder); // copy generated projects from local destination folder to GIT folder
+													// for commit
 		git.add().addFilepattern(".").call();
-		String commitMessage = "commit message "+ Math.random();
+		String commitMessage = "commit message " + Math.random();
 		git.commit().setMessage(commitMessage).call();
 		git.push().setCredentialsProvider(configAuthentication(token, "")).call();
 	}
