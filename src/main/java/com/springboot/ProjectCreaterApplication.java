@@ -120,7 +120,7 @@ public class ProjectCreaterApplication {
 			});
 			for (File localSourceDirectory : directories) {
 				sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
-				destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName();
+				destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName()+(int)Math.floor(Math.random()*(1000-1+1)+1);
 				String cmd = OPENAPI_CMD + destinationDir;
 				Process p = Runtime.getRuntime().exec(cmd);
 				Thread.sleep(8000);
@@ -133,14 +133,14 @@ public class ProjectCreaterApplication {
 				model.setProjectName(localSourceDirectory.getName());
 				model.setSuccess(true);
 			}
-
+			
 			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, token);
-
+			resultModelList.add(model);
 		} catch (Exception ex) {
 			model.setSuccess(false);
 			model.setError(ex.getMessage());
 		}
-		resultModelList.add(model);
+		//resultModelList.add(model);
 		return resultModelList;
 	}
 
