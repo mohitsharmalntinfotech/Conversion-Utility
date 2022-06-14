@@ -92,24 +92,23 @@ public class ProjectCreaterApplication {
 	}
 
 	@PostMapping("/multiProjectMigrateWithGIT")
-	public List<ResultModel> utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel,
+	public FinalResponseModel utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel,
 			@RequestHeader(value = "token", required = false) String token) {
-		List<ResultModel> resultModelList = new ArrayList<ResultModel>();
-		ResultModel model = new ResultModel();
+		FinalResponseModel finalResponseModel = new FinalResponseModel();
+		List<ResultModel> resultModelList = new ArrayList<>();
+		String sourceRepo = sourceDestModel.getSource();
+		String destinationRepo = sourceDestModel.getDestination();
+
+		String sourceMultiDir = "D:\\Source";
+		String destinationMultiDir = "D:\\DesDir";
+		String gitFolder = "D:\\Destination";
+		File[] directories = null;
+		String sourceDir = "";
+		String destinationDir = "";
+
 		try {
-
-			String sourceRepo = sourceDestModel.getSource();
-			String destinationRepo = sourceDestModel.getDestination();
-
-			String sourceMultiDir = "C:\\Source";
-			String destinationMultiDir = "C:\\DesDir";
-			String gitFolder = "C:\\Destination";
-
 			cloneSourceGitRepo(sourceRepo, sourceMultiDir, token);
-
-			String sourceDir = "";
-			String destinationDir = "";
-			File[] directories = new File(sourceMultiDir).listFiles(new FileFilter() {
+			directories = new File(sourceMultiDir).listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File file) {
 					if (file.getName().equalsIgnoreCase(".git")) {
@@ -118,30 +117,46 @@ public class ProjectCreaterApplication {
 						return file.isDirectory();
 				}
 			});
-			for (File localSourceDirectory : directories) {
-				sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
-				destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName()+(int)Math.floor(Math.random()*(1000-1+1)+1);
-				String cmd = OPENAPI_CMD + destinationDir;
-				Process p = Runtime.getRuntime().exec(cmd);
-				Thread.sleep(8000);
-
-				directoryCleanUp(destinationDir);
-				String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
-				modifyPropFile(sourceDir, destinationDir);
-				modifyPOMFile(sourceDir, destinationDir);
-				createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
-				model.setProjectName(localSourceDirectory.getName());
-				model.setSuccess(true);
-			}
-			
-			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, token);
-			resultModelList.add(model);
-		} catch (Exception ex) {
-			model.setSuccess(false);
-			model.setError(ex.getMessage());
+		}catch (Exception ex) {
+			finalResponseModel.setResultModelList(resultModelList);
+			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
 		}
+		if(directories!=null) {
+			for (File localSourceDirectory : directories) {
+				ResultModel model = new ResultModel();
+				try {
+					sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
+					destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName();
+					String cmd = OPENAPI_CMD + destinationDir;
+					Process p = Runtime.getRuntime().exec(cmd);
+					Thread.sleep(8000);
+
+					directoryCleanUp(destinationDir);
+					String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
+					modifyPropFile(sourceDir, destinationDir);
+					modifyPOMFile(sourceDir, destinationDir);
+					createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
+					model .setProjectName(localSourceDirectory.getName());
+					model.setSuccess(true);
+					model.setError("no Error");
+				}catch (Exception ex) {
+					model.setProjectName(localSourceDirectory.getName());
+					model.setSuccess(false);
+					model.setError(ex.getMessage());
+				}
+				resultModelList.add(model);
+			}
+			finalResponseModel.setResultModelList(resultModelList);
+		}
+		try {
+			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, token);
+		}catch (Exception ex) {
+			finalResponseModel.setResultModelList(resultModelList);
+			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
+		}
+
 		//resultModelList.add(model);
-		return resultModelList;
+		return finalResponseModel;
 	}
 
 	@PostMapping("/migrate")
