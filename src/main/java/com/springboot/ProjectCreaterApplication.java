@@ -99,9 +99,11 @@ public class ProjectCreaterApplication {
 		String sourceRepo = sourceDestModel.getSource();
 		String destinationRepo = sourceDestModel.getDestination();
 
-		String sourceMultiDir = "D:\\Source";
-		String destinationMultiDir = "D:\\DesDir";
-		String gitFolder = "D:\\Destination";
+		String defaultBaseDir = System.getProperty("java.io.tmpdir");
+		String sourceMultiDir = defaultBaseDir + "\\Source" + System.currentTimeMillis();
+		String destinationMultiDir = defaultBaseDir + "\\DesDir" + System.currentTimeMillis();
+		String gitFolder = defaultBaseDir + "\\Destination" + System.currentTimeMillis();
+		
 		File[] directories = null;
 		String sourceDir = "";
 		String destinationDir = "";
