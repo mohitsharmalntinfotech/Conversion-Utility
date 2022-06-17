@@ -23,6 +23,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -101,9 +102,10 @@ public class ProjectCreaterApplication {
 
 		String defaultBaseDir = System.getProperty("java.io.tmpdir");
 		long currentTimeMillis = System.currentTimeMillis();
-		String sourceMultiDir = defaultBaseDir + "\\Source" + currentTimeMillis;
-		String destinationMultiDir = defaultBaseDir + "\\DesDir" + currentTimeMillis;
-		String gitFolder = defaultBaseDir + "\\Destination"; 
+		String fileSeparator = FileSystems.getDefault().getSeparator();
+		String sourceMultiDir = defaultBaseDir + fileSeparator +"Source" + currentTimeMillis;
+		String destinationMultiDir = defaultBaseDir + fileSeparator + "DesDir" + currentTimeMillis;
+		String gitFolder = defaultBaseDir + fileSeparator + "Destination" + currentTimeMillis;
 		
 		File[] directories = null;
 		String sourceDir = "";
