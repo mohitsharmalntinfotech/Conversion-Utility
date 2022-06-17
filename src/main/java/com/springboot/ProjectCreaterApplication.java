@@ -130,8 +130,8 @@ public class ProjectCreaterApplication {
 			for (File localSourceDirectory : directories) {
 				ResultModel model = new ResultModel();
 				try {
-					sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
-					destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName();
+					sourceDir = sourceMultiDir + fileSeparator + localSourceDirectory.getName();
+					destinationDir = destinationMultiDir + fileSeparator + localSourceDirectory.getName();
 					String cmd = OPENAPI_CMD + destinationDir;
 					Process p = Runtime.getRuntime().exec(cmd);
 					Thread.sleep(8000);
