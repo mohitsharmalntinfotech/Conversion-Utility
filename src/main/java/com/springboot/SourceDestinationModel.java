@@ -5,6 +5,8 @@ public class SourceDestinationModel {
 	String source;
 	String destination;
 	
+	SourceDestinationModel(){}
+	
 	public SourceDestinationModel(String source, String destination) {
 		this.source = source;
 		this.destination = destination;
