@@ -1,10 +1,8 @@
 package com.springboot;
 
 import static com.springboot.constant.UtilConstant.APP_PROP;
-import static com.springboot.constant.UtilConstant.CONFIG_FILE_FOR_APP_PROP;
 import static com.springboot.constant.UtilConstant.FORMATTER_CLASS;
 import static com.springboot.constant.UtilConstant.IMPORT_RESOURCE_STATMNT;
-import static com.springboot.constant.UtilConstant.MULE_TO_SI_DEPENDECY_PROP;
 import static com.springboot.constant.UtilConstant.OPENAPI_CMD;
 import static com.springboot.constant.UtilConstant.OPENAPI_CONFIG_CLASS;
 import static com.springboot.constant.UtilConstant.OPENAPI_HEALTH_CLASS;
@@ -22,6 +20,10 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -149,7 +151,8 @@ public class ProjectCreaterApplication {
 				}catch (Exception ex) {
 					model.setProjectName(localSourceDirectory.getName());
 					model.setSuccess(false);
-					model.setError(ex.getMessage());
+					//model.setError(ex.getMessage());
+					model.setError(convertStackTraceToString(ex));
 				}
 				resultModelList.add(model);
 			}
@@ -166,6 +169,20 @@ public class ProjectCreaterApplication {
 		return finalResponseModel;
 	}
 
+	private static String convertStackTraceToString(Throwable throwable) 
+	  {
+	      try (StringWriter sw = new StringWriter(); 
+	             PrintWriter pw = new PrintWriter(sw)) 
+	      {
+	          throwable.printStackTrace(pw);
+	          return sw.toString();
+	      } 
+	      catch (IOException ioe) 
+	      {
+	          throw new IllegalStateException(ioe);
+	      }
+	  }   
+	
 	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName)
 			throws Exception {
 
@@ -231,17 +248,16 @@ public class ProjectCreaterApplication {
 		Map<String, String> xmlNamespaceMap = new HashMap<>();
 		xmlNamespaceMap.put("xmlns:integration", "http://www.springframework.org/schema/integration");
 
-		FileReader nameSpaceReader = new FileReader(
-				new File(getClass().getClassLoader().getResource("namespace-mapping.properties").toURI()));
 
+		InputStream in = Model.class.getClassLoader().getResourceAsStream("namespace-mapping.properties");		
+		
 		Properties nameSpacePropertiesFile = new Properties();
-		nameSpacePropertiesFile.load(nameSpaceReader);
-
-		FileReader schemaReader = new FileReader(
-				new File(getClass().getClassLoader().getResource("schema-mapping.properties").toURI()));
+		nameSpacePropertiesFile.load(new InputStreamReader(in));
+		
+		InputStream schemaStream = Model.class.getClassLoader().getResourceAsStream("schema-mapping.properties");		
 
 		Properties schemaPropertiesFile = new Properties();
-		schemaPropertiesFile.load(schemaReader);
+		schemaPropertiesFile.load(new InputStreamReader(schemaStream));
 
 		Node node = muleTagList.item(0);
 
@@ -368,9 +384,10 @@ public class ProjectCreaterApplication {
 		doc.getDocumentElement().normalize();
 
 		ConcurrentHashMap<String, ConcurrentHashMap<String, String>> outerMap = new ConcurrentHashMap<String, ConcurrentHashMap<String, String>>();
-		FileReader fr = new FileReader(
-				new File(getClass().getClassLoader().getResource(CONFIG_FILE_FOR_APP_PROP).toURI()));
-		BufferedReader br = new BufferedReader(fr);
+
+		InputStream in = Model.class.getClassLoader().getResourceAsStream("config.properties");			
+		
+		BufferedReader br = new BufferedReader(new InputStreamReader(in));
 		String line = null;
 		while ((line = br.readLine()) != null) {
 			ConcurrentHashMap<String, String> innerMap = new ConcurrentHashMap<String, String>();
@@ -444,11 +461,10 @@ public class ProjectCreaterApplication {
 		NodeList nList = document.getElementsByTagName("dependency");
 		ArrayList<String> siDependencyList = new ArrayList<>();
 
-		FileReader reader = new FileReader(
-				new File(getClass().getClassLoader().getResource(MULE_TO_SI_DEPENDECY_PROP).toURI()));
+		InputStream in = Model.class.getClassLoader().getResourceAsStream("muletosimapping.properties");	
 
 		Properties propertiesFile = new Properties();
-		propertiesFile.load(reader);
+		propertiesFile.load(new InputStreamReader(in));
 
 		for (int temp = 0; temp < nList.getLength(); temp++) {
 			Node node = nList.item(temp);
