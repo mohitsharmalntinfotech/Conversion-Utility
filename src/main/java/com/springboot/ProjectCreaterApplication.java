@@ -83,6 +83,8 @@ public class ProjectCreaterApplication {
 	@Value("${springint.fileName}")
 	private String destnSpringIntFileName;
 
+	private String fileSeparator = FileSystems.getDefault().getSeparator();
+	
 	public static void main(String[] args) throws IOException {
 		SpringApplication.run(ProjectCreaterApplication.class, args);
 	}
@@ -102,10 +104,10 @@ public class ProjectCreaterApplication {
 
 		String defaultBaseDir = System.getProperty("java.io.tmpdir");
 		long currentTimeMillis = System.currentTimeMillis();
-		String fileSeparator = FileSystems.getDefault().getSeparator();
+		
 		String sourceMultiDir = defaultBaseDir + fileSeparator +"Source" + currentTimeMillis;
 		String destinationMultiDir = defaultBaseDir + fileSeparator + "DesDir" + currentTimeMillis;
-		String gitFolder = defaultBaseDir + fileSeparator + "Destination" + currentTimeMillis;
+		String gitFolder = defaultBaseDir + fileSeparator + "Destination" + currentTimeMillis; 
 		
 		File[] directories = null;
 		String sourceDir = "";
@@ -162,25 +164,6 @@ public class ProjectCreaterApplication {
 
 		//resultModelList.add(model);
 		return finalResponseModel;
-	}
-
-	@PostMapping("/migrate")
-	public String utilCall(@RequestBody SourceDestinationModel sourceDestModel) throws Exception {
-		String sourceDir = sourceDestModel.getSource();
-		String destinationDir = sourceDestModel.getDestination();
-
-		String cmd = OPENAPI_CMD + destinationDir;
-		Process p = Runtime.getRuntime().exec(cmd);
-		Thread.sleep(8000);
-
-		directoryCleanUp(destinationDir);
-		String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
-		modifyPropFile(sourceDir, destinationDir);
-		modifyPOMFile(sourceDir, destinationDir);
-		// createIntegrationFile(sourceDir, destinationDir,mainBootFileName);
-		createIntegrationXMLFile(sourceDir, destinationDir, mainBootFileName);
-
-		return "Application migrated to spring boot successfully";
 	}
 
 	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName)
@@ -310,43 +293,12 @@ public class ProjectCreaterApplication {
 		return xmlNamespaceMap;
 	}
 
-	@PostMapping("/multiProjectMigrate")
-	public List<ResultModel> utilMultiProjectCall(@RequestBody SourceDestinationModel sourceDestModel) {
-		List<ResultModel> resultModelList = new ArrayList<ResultModel>();
-		ResultModel model = new ResultModel();
-		try {
-			String sourceMultiDir = sourceDestModel.getSource();
-			String destinationMultiDir = sourceDestModel.getDestination();
-			String sourceDir = "";
-			String destinationDir = "";
-			File[] directories = new File(sourceMultiDir).listFiles(File::isDirectory);
-			for (File localSourceDirectory : directories) {
-				sourceDir = sourceMultiDir + "\\" + localSourceDirectory.getName();
-				destinationDir = destinationMultiDir + "\\" + localSourceDirectory.getName();
-				String cmd = OPENAPI_CMD + destinationDir;
-				Process p = Runtime.getRuntime().exec(cmd);
-				Thread.sleep(8000);
-
-				directoryCleanUp(destinationDir);
-				String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
-				modifyPropFile(sourceDir, destinationDir);
-				modifyPOMFile(sourceDir, destinationDir);
-				createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
-				model.setProjectName(localSourceDirectory.getName());
-				model.setSuccess(true);
-			}
-		} catch (Exception e) {
-			model.setSuccess(false);
-		}
-		resultModelList.add(model);
-		return resultModelList;
-	}
 
 	private void directoryCleanUp(String destinationDir) throws IOException {
 		String destnConfigDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_CONFIG_CLASS);
-		destnConfigDeleteLocation = destnConfigDeleteLocation.replace("\\" + OPENAPI_CONFIG_CLASS, "");
+		destnConfigDeleteLocation = destnConfigDeleteLocation.replace(fileSeparator + OPENAPI_CONFIG_CLASS, "");
 		String destnAPIDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_HEALTH_CLASS);
-		destnAPIDeleteLocation = destnAPIDeleteLocation.replace("\\" + OPENAPI_HEALTH_CLASS, "");
+		destnAPIDeleteLocation = destnAPIDeleteLocation.replace(fileSeparator + OPENAPI_HEALTH_CLASS, "");
 		String destnFormatterLocation = getDirectoryNameForFile(destinationDir, FORMATTER_CLASS);
 		File fileDirectoryConfig = new File(destnConfigDeleteLocation);
 		File fileDirectoryAPI = new File(destnAPIDeleteLocation);
@@ -621,8 +573,8 @@ public class ProjectCreaterApplication {
 	private void createListnerFile(String destinationDir, String mainBootFileName) throws Exception {
 
 		String destnListnerLocation = getDirectoryNameForFile(destinationDir, mainBootFileName + ".java");
-		destnListnerLocation = destnListnerLocation.replace("\\" + mainBootFileName + ".java", "");
-		File listnerFile = new File(destnListnerLocation + "\\" + "SimpleMessageListener.java");
+		destnListnerLocation = destnListnerLocation.replace(fileSeparator + mainBootFileName + ".java", "");
+		File listnerFile = new File(destnListnerLocation + fileSeparator + "SimpleMessageListener.java");
 		BufferedWriter listnerWriter = null;
 		StringBuffer sb = new StringBuffer();
 		sb.append("package com.lti;\n" + "\n" + "import org.springframework.stereotype.Component;\n" + "\n"
@@ -638,7 +590,7 @@ public class ProjectCreaterApplication {
 	private void createIntegrationXMLFile(StringBuilder xmlStringBuilder, String destinationDir) throws Exception {
 		String destnResourceLocation = getDirectoryNameForFile(destinationDir, "resources");
 
-		String fileName = destnResourceLocation + "//" + destnSpringIntFileName;
+		String fileName = destnResourceLocation + fileSeparator + destnSpringIntFileName;
 		File file = new File(fileName);
 		BufferedWriter writer = null;
 		writer = new BufferedWriter(new FileWriter(file));
