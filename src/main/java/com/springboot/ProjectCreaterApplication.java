@@ -98,7 +98,8 @@ public class ProjectCreaterApplication {
 
 	@PostMapping("/multiProjectMigrateWithGIT")
 	public FinalResponseModel utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel,
-			@RequestHeader(value = "token", required = false) String token) {
+			@RequestHeader(value = "sourceToken", required = false) String sourceToken,
+			@RequestHeader(value = "destToken", required = false) String destToken) {
 		FinalResponseModel finalResponseModel = new FinalResponseModel();
 		List<ResultModel> resultModelList = new ArrayList<>();
 		String sourceRepo = sourceDestModel.getSource();
@@ -116,7 +117,7 @@ public class ProjectCreaterApplication {
 		String destinationDir = "";
 
 		try {
-			cloneSourceGitRepo(sourceRepo, sourceMultiDir, token);
+			cloneSourceGitRepo(sourceRepo, sourceMultiDir, sourceToken);
 			directories = new File(sourceMultiDir).listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File file) {
@@ -128,8 +129,8 @@ public class ProjectCreaterApplication {
 			});
 		}catch (Exception ex) {
 			finalResponseModel.setResultModelList(resultModelList);
-			//finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
-			finalResponseModel.setErrorMessage(convertStackTraceToString(ex));
+			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
+			finalResponseModel.setStackTrace(convertStackTraceToString(ex));
 		}
 		if(directories!=null) {
 			for (File localSourceDirectory : directories) {
@@ -152,19 +153,19 @@ public class ProjectCreaterApplication {
 				}catch (Exception ex) {
 					model.setProjectName(localSourceDirectory.getName());
 					model.setSuccess(false);
-					//model.setError(ex.getMessage());
-					model.setError(convertStackTraceToString(ex));
+					model.setError(ex.getMessage());
+					model.setStackTrace(convertStackTraceToString(ex));
 				}
 				resultModelList.add(model);
 			}
 			finalResponseModel.setResultModelList(resultModelList);
 		}
 		try {
-			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, token);
+			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, destToken);
 		}catch (Exception ex) {
 			finalResponseModel.setResultModelList(resultModelList);
-			//finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
-			finalResponseModel.setErrorMessage(convertStackTraceToString(ex));
+			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
+			finalResponseModel.setStackTrace(convertStackTraceToString(ex));
 		}
 
 		//resultModelList.add(model);

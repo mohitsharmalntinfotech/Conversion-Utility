@@ -8,10 +8,14 @@ public class FinalResponseModel {
 	
 	String errorMessage;
 	
-	public FinalResponseModel(List<ResultModel> resultModelList, String errorMessage) {
+	String stackTrace;
+	
+
+	public FinalResponseModel(List<ResultModel> resultModelList, String errorMessage, String stackTrace) {
 		super();
 		this.resultModelList = resultModelList;
 		this.errorMessage = errorMessage;
+		this.stackTrace = stackTrace;
 	}
 	public FinalResponseModel() {}
 	
@@ -26,6 +30,12 @@ public class FinalResponseModel {
 	}
 	public void setErrorMessage(String errorMessage) {
 		this.errorMessage = errorMessage;
+	}
+	public String getStackTrace() {
+		return stackTrace;
+	}
+	public void setStackTrace(String stackTrace) {
+		this.stackTrace = stackTrace;
 	}
 	
 	

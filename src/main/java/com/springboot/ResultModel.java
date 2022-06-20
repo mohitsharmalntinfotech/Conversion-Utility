@@ -5,14 +5,14 @@ public class ResultModel {
 	private String projectName;
 	private boolean success;
 	private String error;
+	private String stackTrace;
 	
-	
-
-	public ResultModel(String projectName, boolean success, String error) {
+	public ResultModel(String projectName, boolean success, String error, String stackTrace) {
 		super();
 		this.projectName = projectName;
 		this.success = success;
 		this.error = error;
+		this.stackTrace = stackTrace;
 	}
 
 	public ResultModel() {}
@@ -41,7 +41,14 @@ public class ResultModel {
 		this.error = error;
 	}
 	
-	
+
+	public String getStackTrace() {
+		return stackTrace;
+	}
+
+	public void setStackTrace(String stackTrace) {
+		this.stackTrace = stackTrace;
+	}
 
 	
 	
