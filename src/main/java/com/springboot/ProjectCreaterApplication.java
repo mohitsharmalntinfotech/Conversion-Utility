@@ -128,7 +128,8 @@ public class ProjectCreaterApplication {
 			});
 		}catch (Exception ex) {
 			finalResponseModel.setResultModelList(resultModelList);
-			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
+			//finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
+			finalResponseModel.setErrorMessage(convertStackTraceToString(ex));
 		}
 		if(directories!=null) {
 			for (File localSourceDirectory : directories) {
