@@ -162,7 +162,8 @@ public class ProjectCreaterApplication {
 			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, token);
 		}catch (Exception ex) {
 			finalResponseModel.setResultModelList(resultModelList);
-			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
+			//finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
+			finalResponseModel.setErrorMessage(convertStackTraceToString(ex));
 		}
 
 		//resultModelList.add(model);
