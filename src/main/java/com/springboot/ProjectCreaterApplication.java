@@ -318,13 +318,13 @@ public class ProjectCreaterApplication {
 		destnConfigDeleteLocation = destnConfigDeleteLocation.replace(fileSeparator + OPENAPI_CONFIG_CLASS, "");
 		String destnAPIDeleteLocation = getDirectoryNameForFile(destinationDir, OPENAPI_HEALTH_CLASS);
 		destnAPIDeleteLocation = destnAPIDeleteLocation.replace(fileSeparator + OPENAPI_HEALTH_CLASS, "");
-		String destnFormatterLocation = getDirectoryNameForFile(destinationDir, FORMATTER_CLASS);
+		//String destnFormatterLocation = getDirectoryNameForFile(destinationDir, FORMATTER_CLASS);
 		File fileDirectoryConfig = new File(destnConfigDeleteLocation);
 		File fileDirectoryAPI = new File(destnAPIDeleteLocation);
-		File fileDirectoryFormatter = new File(destnFormatterLocation);
+		//File fileDirectoryFormatter = new File(destnFormatterLocation);
 		FileUtils.deleteDirectory(fileDirectoryConfig);
 		FileUtils.deleteDirectory(fileDirectoryAPI);
-		FileUtils.forceDelete(fileDirectoryFormatter);
+		//FileUtils.forceDelete(fileDirectoryFormatter);
 
 	}
 
