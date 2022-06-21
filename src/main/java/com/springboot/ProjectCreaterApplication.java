@@ -464,7 +464,7 @@ public class ProjectCreaterApplication {
 		NodeList nList = document.getElementsByTagName("dependency");
 		ArrayList<String> siDependencyList = new ArrayList<>();
 
-		InputStream in = Model.class.getClassLoader().getResourceAsStream("muletosimapping.properties");	
+		InputStream in = Model.class.getClassLoader().getResourceAsStream("muledependencies.properties");	
 
 		Properties propertiesFile = new Properties();
 		propertiesFile.load(new InputStreamReader(in));
