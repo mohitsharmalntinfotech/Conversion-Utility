@@ -65,6 +65,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -96,6 +97,12 @@ public class ProjectCreaterApplication {
 		System.out.println("Start the App to build SI integration");
 	}
 
+	@GetMapping("/health")
+	public String healthCheck() {
+		
+		return "APP is UP!!";
+	}
+	
 	@PostMapping("/multiProjectMigrateWithGIT")
 	public FinalResponseModel utilCallForGit(@RequestBody SourceDestinationModel sourceDestModel,
 			@RequestHeader(value = "sourceToken", required = false) String sourceToken,
