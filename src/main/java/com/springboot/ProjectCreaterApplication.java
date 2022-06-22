@@ -146,7 +146,8 @@ public class ProjectCreaterApplication {
 					String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
 					modifyPropFile(sourceDir, destinationDir);
 					modifyPOMFile(sourceDir, destinationDir);
-					createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
+//					createIntegrationFile(sourceDir, destinationDir, mainBootFileName);
+					createIntegrationXMLFile(sourceDir, destinationDir, mainBootFileName);
 					model .setProjectName(localSourceDirectory.getName());
 					model.setSuccess(true);
 					model.setError("no Error");
@@ -186,8 +187,7 @@ public class ProjectCreaterApplication {
 	      }
 	  }   
 	
-	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName)
-			throws Exception {
+	private void createIntegrationXMLFile(String sourceDir, String destinationDir, String mainBootFileName) throws Exception {
 
 		// Get Document Builder
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -199,38 +199,102 @@ public class ProjectCreaterApplication {
 		document.getDocumentElement().normalize();
 
 		Map<String, String> xmlNamespaceMap = modifyXmlNameSpace(document);
-
 		StringBuilder writeXml = getNamespaceValues(xmlNamespaceMap);
-		System.out.println(writeXml);
-
-		Map<String, String> flowArributeMap = getFlowAttribute(document);
-
+		getFlowAttribute(document, writeXml);
+		
+		writeXml.append(
+				"\n<integration:channel id=\"outbound\"/>\r\n"
+						+ " <integration:header-enricher input-channel=\"requestChannel\" output-channel=\"outbound\"/>\r\n"
+						+ "   ");
+		
+		writeXml.append("\n</beans>");
+		createIntegrationXMLFile(writeXml, destinationDir);
 	}
 
-	private Map<String, String> getFlowAttribute(Document document) {
-		Map<String, String> flowAttribute = new HashMap<>();
-		NodeList flowTagList = document.getElementsByTagName("flow");
 
-		System.out.println(flowTagList.getLength());
+	private StringBuilder getFlowAttribute(Document document, StringBuilder writeFlowSb) throws URISyntaxException, IOException {
+		FileReader integrationMappingFileReader = new FileReader(
+				new File(getClass().getClassLoader().getResource("mule-integration-mapping.properties").toURI()));
+
+		Properties siMappingPropertiesFile = new Properties();
+		siMappingPropertiesFile.load(integrationMappingFileReader);
+		
+		NodeList flowTagList = document.getElementsByTagName("flow");
+		
 		NodeList flowNode = flowTagList.item(0).getChildNodes();
 		for (int i = 0; i < flowNode.getLength(); i++) {
 			Node childNode = (Node) flowNode.item(i);
 			if (childNode.getNodeType() == Node.ELEMENT_NODE) {
-				NamedNodeMap attributesMap = childNode.getAttributes();
-				for (int a = 0; a < attributesMap.getLength(); a++) {
-					Node nodeTheAttribute = attributesMap.item(a);
-					System.out.println(nodeTheAttribute.getNodeName() + " -- " + nodeTheAttribute.getNodeValue());
-					if (nodeTheAttribute.getNodeName().equalsIgnoreCase("path")
-							|| nodeTheAttribute.getNodeName().equalsIgnoreCase("destination")
-							|| nodeTheAttribute.getNodeName().equalsIgnoreCase("message")) {
-						flowAttribute.put(nodeTheAttribute.getNodeName(), nodeTheAttribute.getNodeValue());
-					}
+				if(childNode.getNodeName().equalsIgnoreCase("http:listener")) {
+					writeFlowSb = writeFlowSb.append(httpListnerConversion(siMappingPropertiesFile.getProperty(childNode.getNodeName().replace(":", "-")), childNode));
+				}else if(childNode.getNodeName().equalsIgnoreCase("jms:publish")) {
+					writeFlowSb = writeFlowSb.append(jmsPublishConversion(siMappingPropertiesFile.getProperty(childNode.getNodeName().replace(":", "-")), childNode));
 				}
 			}
 
 		}
+		return writeFlowSb;
+	}
 
-		return flowAttribute;
+	private StringBuilder jmsPublishConversion(String property, Node childNode) {
+		StringBuilder writeJmsPublishSb = new StringBuilder();
+		String[] splitJmsPublishProp = property.split(",");
+		writeJmsPublishSb = writeJmsPublishSb.append("\n<");
+		for(int i=0; i<splitJmsPublishProp.length; i++) {
+			
+			if(splitJmsPublishProp[i].contains("=?")) {
+				String propKey = null;
+				if(splitJmsPublishProp[i].contains("destination-name")) {
+					propKey = splitJmsPublishProp[i].replace("-name=?", "");
+				}else {
+					propKey = splitJmsPublishProp[i].replace("=?", "");
+				}
+				String attributeValue = getChildTagAttributes(childNode, propKey);
+				splitJmsPublishProp[i] = splitJmsPublishProp[i].replace("?", "\""+attributeValue+"\"");
+			}
+			writeJmsPublishSb = writeJmsPublishSb.append(splitJmsPublishProp[i]+" ");
+		}
+		
+		writeJmsPublishSb.append("/>");
+		
+		return writeJmsPublishSb;
+	}
+
+	private StringBuilder httpListnerConversion(String property, Node childNode) {
+		StringBuilder writeHttpListnerSb = new StringBuilder();
+		String[] splitHttpListnerProp = property.split(",");
+		writeHttpListnerSb = writeHttpListnerSb.append("\n <");
+		for(int i=0; i<splitHttpListnerProp.length; i++) {
+			
+			if(splitHttpListnerProp[i].contains("=?")) {
+				String attributeValue = getChildTagAttributes(childNode, splitHttpListnerProp[i].replace("=?", ""));
+				splitHttpListnerProp[i] = splitHttpListnerProp[i].replace("?", "\""+attributeValue+"\"");
+			}
+			writeHttpListnerSb = writeHttpListnerSb.append(splitHttpListnerProp[i]+" ");
+		}
+		
+		writeHttpListnerSb.append("/>");
+		
+		writeHttpListnerSb.append("\n"
+				+ "	<integration:channel id=\"requestChannel\"/>\r\n"
+				+ "    <integration:channel id=\"outputChannel\"/>");
+		
+		
+		return writeHttpListnerSb;
+		
+	}
+	
+	private String getChildTagAttributes(Node childNode, String data) {
+		NamedNodeMap attributesMap = childNode.getAttributes();
+		String dataValue = null;
+		for (int a = 0; a < attributesMap.getLength(); a++) {
+			Node nodeTheAttribute = attributesMap.item(a);
+			if (nodeTheAttribute.getNodeName().equalsIgnoreCase(data)){
+				dataValue = nodeTheAttribute.getNodeValue();
+			}
+		}
+		
+		return dataValue;
 	}
 
 	private StringBuilder getNamespaceValues(Map<String, String> xmlNamespaceMap) {
