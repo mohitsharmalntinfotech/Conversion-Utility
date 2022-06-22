@@ -220,8 +220,8 @@ public class ProjectCreaterApplication {
 
 
 	private StringBuilder getFlowAttribute(Document document, StringBuilder writeFlowSb) throws URISyntaxException, IOException {
-		FileReader integrationMappingFileReader = new FileReader(
-				new File(getClass().getClassLoader().getResource("mule-integration-mapping.properties").toURI()));
+				
+		InputStream integrationMappingFileReader = Model.class.getClassLoader().getResourceAsStream("mule-integration-mapping.properties");
 
 		Properties siMappingPropertiesFile = new Properties();
 		siMappingPropertiesFile.load(integrationMappingFileReader);

@@ -1,5 +1,8 @@
 package com.springboot.constant;
 
+/**
+* Application constants
+*/
 public class UtilConstant {
 	
 	public static final String PACKAGE_NAME = "package";
