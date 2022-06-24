@@ -1,6 +1,7 @@
 package com.springboot;
 
 import java.util.List;
+import java.util.Map;
 
 public class FinalResponseModel {
 	
@@ -10,7 +11,15 @@ public class FinalResponseModel {
 	
 	String stackTrace;
 	
+	Map<String, String> finalResponseMap;
+	
 
+	public Map<String, String> getFinalResponseMap() {
+		return finalResponseMap;
+	}
+	public void setFinalResponseMap(Map<String, String> finalResponseMap) {
+		this.finalResponseMap = finalResponseMap;
+	}
 	public FinalResponseModel(List<ResultModel> resultModelList, String errorMessage, String stackTrace) {
 		super();
 		this.resultModelList = resultModelList;

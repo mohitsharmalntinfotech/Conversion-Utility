@@ -1,12 +1,15 @@
 package com.springboot;
 
+import java.util.Map;
+
 public class ResultModel {
 	
 	private String projectName;
 	private boolean success;
 	private String error;
 	private String stackTrace;
-	
+	private Map<String, String> responseMap;
+
 	public ResultModel(String projectName, boolean success, String error, String stackTrace) {
 		super();
 		this.projectName = projectName;
@@ -48,6 +51,14 @@ public class ResultModel {
 
 	public void setStackTrace(String stackTrace) {
 		this.stackTrace = stackTrace;
+	}
+	
+	public Map<String, String> getResponseMap() {
+		return responseMap;
+	}
+
+	public void setResponseMap(Map<String, String> responseMap) {
+		this.responseMap = responseMap;
 	}
 
 	

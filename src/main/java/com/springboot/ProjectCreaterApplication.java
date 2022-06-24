@@ -99,6 +99,8 @@ public class ProjectCreaterApplication {
 			@RequestHeader(value = "sourceToken", required = false) String sourceToken,
 			@RequestHeader(value = "destToken", required = false) String destToken) {
 		FinalResponseModel finalResponseModel = new FinalResponseModel();
+		
+		Map<String, String> finalResponseHashMap = getDefaultFinalResponseMap();	
 		List<ResultModel> resultModelList = new ArrayList<>();
 		String sourceRepo = sourceDestModel.getSource();
 		String destinationRepo = sourceDestModel.getDestination();
@@ -116,6 +118,8 @@ public class ProjectCreaterApplication {
 
 		try {
 			cloneSourceGitRepo(sourceRepo, sourceMultiDir, sourceToken);
+			finalResponseHashMap.put("Clone from Git","Completed"); //Source cloned from Git
+			
 			directories = new File(sourceMultiDir).listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File file) {
@@ -125,34 +129,49 @@ public class ProjectCreaterApplication {
 						return file.isDirectory();
 				}
 			});
+			finalResponseHashMap.put("Directories Identified","Completed"); //Directories Identified
+			finalResponseModel.setFinalResponseMap(finalResponseHashMap);
+			
 		}catch (Exception ex) {
 			finalResponseModel.setResultModelList(resultModelList);
 			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
 			finalResponseModel.setStackTrace(convertStackTraceToString(ex));
+			finalResponseModel.setFinalResponseMap(finalResponseHashMap);
+			
 		}
 		if(directories!=null) {
+			
 			for (File localSourceDirectory : directories) {
 				ResultModel model = new ResultModel();
+				Map projectResponseMap = getDefaultResponseMap();
 				try {
 					sourceDir = sourceMultiDir + fileSeparator + localSourceDirectory.getName();
 					destinationDir = destinationMultiDir + fileSeparator + localSourceDirectory.getName();
 					String cmd = OPENAPI_CMD + destinationDir;
 					Process p = Runtime.getRuntime().exec(cmd);
 					Thread.sleep(8000);
-
+					projectResponseMap.put("1","Completed"); //Open API command executed
 					directoryCleanUp(destinationDir);
+					projectResponseMap.put("2","Completed"); //Directory cleaned up
 					String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
+					projectResponseMap.put("3","Completed"); //Main Java file modified
 					modifyPropFile(sourceDir, destinationDir);
+					projectResponseMap.put("4","Completed"); //Properties file modified
 					modifyPOMFile(sourceDir, destinationDir);
+					projectResponseMap.put("5","Completed"); //POM file modified
 					createIntegrationXMLFile(sourceDir, destinationDir, mainBootFileName);
-					model .setProjectName(localSourceDirectory.getName());
+					projectResponseMap.put("6","Completed"); //Integration XML created
+					model.setProjectName(localSourceDirectory.getName());
 					model.setSuccess(true);
 					model.setError("no Error");
+					model.setResponseMap(projectResponseMap);
 				}catch (Exception ex) {
 					model.setProjectName(localSourceDirectory.getName());
 					model.setSuccess(false);
 					model.setError(ex.getMessage());
 					model.setStackTrace(convertStackTraceToString(ex));
+					model.setResponseMap(projectResponseMap);
+					
 				}
 				resultModelList.add(model);
 			}
@@ -160,6 +179,7 @@ public class ProjectCreaterApplication {
 		}
 		try {
 			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, destToken);
+			finalResponseHashMap.put("Push Projects to Git","Completed"); //Push to Destination
 		}catch (Exception ex) {
 			finalResponseModel.setResultModelList(resultModelList);
 			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
@@ -168,6 +188,25 @@ public class ProjectCreaterApplication {
 
 		//resultModelList.add(model);
 		return finalResponseModel;
+	}
+
+	private Map<String, String> getDefaultFinalResponseMap() {
+		Map<String, String> finalResponseHashMap = new HashMap<String, String>();
+		finalResponseHashMap.put("Clone from Git","Not initiated yet.."); //Source cloned from Git
+		finalResponseHashMap.put("Directories Identified","Not initiated yet.."); //Directories Identified
+		finalResponseHashMap.put("Push Projects to Git","Not initiated yet.."); //Push to Destination
+		return finalResponseHashMap;
+	}
+
+	private Map getDefaultResponseMap() {
+		Map projectResponseMap = new HashMap<String, String>();
+		projectResponseMap.put("1","Not Initiated.."); //Open API command executed
+		projectResponseMap.put("2","Not Initiated.."); //Directory cleaned up
+		projectResponseMap.put("3","Not Initiated.."); //Main Java file modified
+		projectResponseMap.put("4","Not Initiated.."); //Properties file modified
+		projectResponseMap.put("5","Not Initiated.."); //POM file modified
+		projectResponseMap.put("6","Not Initiated.."); //Integration XML created
+		return projectResponseMap;
 	}
 
 	private static String convertStackTraceToString(Throwable throwable) 
