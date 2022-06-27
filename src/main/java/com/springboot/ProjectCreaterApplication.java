@@ -126,7 +126,7 @@ public class ProjectCreaterApplication {
 
 		try {
 			cloneSourceGitRepo(sourceRepo, sourceMultiDir, sourceToken);
-			finalResponseHashMap.put("Clone from Git","Completed"); //Source cloned from Git
+			finalResponseHashMap.put("Clone from Git","true"); //Source cloned from Git
 			
 			directories = new File(sourceMultiDir).listFiles(new FileFilter() {
 				@Override
@@ -137,7 +137,7 @@ public class ProjectCreaterApplication {
 						return file.isDirectory();
 				}
 			});
-			finalResponseHashMap.put("Directories Identified","Completed"); //Directories Identified
+			finalResponseHashMap.put("Directories Identified","true"); //Directories Identified
 			finalResponseModel.setFinalResponseMap(finalResponseHashMap);
 			
 		}catch (Exception ex) {
@@ -158,17 +158,17 @@ public class ProjectCreaterApplication {
 					String cmd = OPENAPI_CMD + destinationDir;
 					Process p = Runtime.getRuntime().exec(cmd);
 					Thread.sleep(8000);
-					projectResponseMap.put("1","Completed"); //Open API command executed
+					projectResponseMap.put("1","true"); //Open API command executed
 					directoryCleanUp(destinationDir);
-					projectResponseMap.put("2","Completed"); //Directory cleaned up
+					projectResponseMap.put("2","true"); //Directory cleaned up
 					String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
-					projectResponseMap.put("3","Completed"); //Main Java file modified
+					projectResponseMap.put("3","true"); //Main Java file modified
 					modifyPropFile(sourceDir, destinationDir);
-					projectResponseMap.put("4","Completed"); //Properties file modified
+					projectResponseMap.put("4","true"); //Properties file modified
 					modifyPOMFile(sourceDir, destinationDir);
-					projectResponseMap.put("5","Completed"); //POM file modified
+					projectResponseMap.put("5","true"); //POM file modified
 					createIntegrationXMLFile(sourceDir, destinationDir, mainBootFileName);
-					projectResponseMap.put("6","Completed"); //Integration XML created
+					projectResponseMap.put("6","true"); //Integration XML created
 					model.setProjectName(localSourceDirectory.getName());
 					model.setSuccess(true);
 					model.setError("no Error");
@@ -187,7 +187,7 @@ public class ProjectCreaterApplication {
 		}
 		try {
 			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, destToken);
-			finalResponseHashMap.put("Push Projects to Git","Completed"); //Push to Destination
+			finalResponseHashMap.put("Push Projects to Git","true"); //Push to Destination
 		}catch (Exception ex) {
 			finalResponseModel.setResultModelList(resultModelList);
 			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
@@ -200,20 +200,20 @@ public class ProjectCreaterApplication {
 
 	private Map<String, String> getDefaultFinalResponseMap() {
 		Map<String, String> finalResponseHashMap = new HashMap<String, String>();
-		finalResponseHashMap.put("Clone from Git","Not initiated yet.."); //Source cloned from Git
-		finalResponseHashMap.put("Directories Identified","Not initiated yet.."); //Directories Identified
-		finalResponseHashMap.put("Push Projects to Git","Not initiated yet.."); //Push to Destination
+		finalResponseHashMap.put("Clone from Git","false"); //Source cloned from Git
+		finalResponseHashMap.put("Directories Identified","false"); //Directories Identified
+		finalResponseHashMap.put("Push Projects to Git","false"); //Push to Destination
 		return finalResponseHashMap;
 	}
 
 	private Map getDefaultResponseMap() {
 		Map projectResponseMap = new HashMap<String, String>();
-		projectResponseMap.put("1","Not Initiated.."); //Open API command executed
-		projectResponseMap.put("2","Not Initiated.."); //Directory cleaned up
-		projectResponseMap.put("3","Not Initiated.."); //Main Java file modified
-		projectResponseMap.put("4","Not Initiated.."); //Properties file modified
-		projectResponseMap.put("5","Not Initiated.."); //POM file modified
-		projectResponseMap.put("6","Not Initiated.."); //Integration XML created
+		projectResponseMap.put("1","false"); //Open API command executed
+		projectResponseMap.put("2","false"); //Directory cleaned up
+		projectResponseMap.put("3","false"); //Main Java file modified
+		projectResponseMap.put("4","false"); //Properties file modified
+		projectResponseMap.put("5","false"); //POM file modified
+		projectResponseMap.put("6","false"); //Integration XML created
 		return projectResponseMap;
 	}
 
