@@ -108,7 +108,7 @@ public class ProjectCreaterApplication {
 			@RequestHeader(value = "destToken", required = false) String destToken) {
 		FinalResponseModel finalResponseModel = new FinalResponseModel();
 		
-		Map<String, String> finalResponseHashMap = getDefaultFinalResponseMap();	
+		Map<String, Boolean> finalResponseHashMap = getDefaultFinalResponseMap();	
 		List<ResultModel> resultModelList = new ArrayList<>();
 		String sourceRepo = sourceDestModel.getSource();
 		String destinationRepo = sourceDestModel.getDestination();
@@ -126,7 +126,7 @@ public class ProjectCreaterApplication {
 
 		try {
 			cloneSourceGitRepo(sourceRepo, sourceMultiDir, sourceToken);
-			finalResponseHashMap.put("Clone from Git","true"); //Source cloned from Git
+			finalResponseHashMap.put("CloneFromGit",true); //Source cloned from Git
 			
 			directories = new File(sourceMultiDir).listFiles(new FileFilter() {
 				@Override
@@ -137,7 +137,7 @@ public class ProjectCreaterApplication {
 						return file.isDirectory();
 				}
 			});
-			finalResponseHashMap.put("Directories Identified","true"); //Directories Identified
+			finalResponseHashMap.put("DirectoriesIdentified",true); //Directories Identified
 			finalResponseModel.setFinalResponseMap(finalResponseHashMap);
 			
 		}catch (Exception ex) {
@@ -158,17 +158,17 @@ public class ProjectCreaterApplication {
 					String cmd = OPENAPI_CMD + destinationDir;
 					Process p = Runtime.getRuntime().exec(cmd);
 					Thread.sleep(8000);
-					projectResponseMap.put("1","true"); //Open API command executed
+					projectResponseMap.put("1",true); //Open API command executed
 					directoryCleanUp(destinationDir);
-					projectResponseMap.put("2","true"); //Directory cleaned up
+					projectResponseMap.put("2",true); //Directory cleaned up
 					String mainBootFileName = modifyMainJavaFile(sourceDir, destinationDir);
-					projectResponseMap.put("3","true"); //Main Java file modified
+					projectResponseMap.put("3",true);
 					modifyPropFile(sourceDir, destinationDir);
-					projectResponseMap.put("4","true"); //Properties file modified
+					projectResponseMap.put("4",true); //Properties file modified
 					modifyPOMFile(sourceDir, destinationDir);
-					projectResponseMap.put("5","true"); //POM file modified
+					projectResponseMap.put("5",true); //POM file modified
 					createIntegrationXMLFile(sourceDir, destinationDir, mainBootFileName);
-					projectResponseMap.put("6","true"); //Integration XML created
+					projectResponseMap.put("6",true); //Integration XML created
 					model.setProjectName(localSourceDirectory.getName());
 					model.setSuccess(true);
 					model.setError("no Error");
@@ -187,7 +187,7 @@ public class ProjectCreaterApplication {
 		}
 		try {
 			cloneDestinationGitRepoAndCommit(destinationRepo, destinationMultiDir, gitFolder, destToken);
-			finalResponseHashMap.put("Push Projects to Git","true"); //Push to Destination
+			finalResponseHashMap.put("PushToGit",true); //Push to Destination
 		}catch (Exception ex) {
 			finalResponseModel.setResultModelList(resultModelList);
 			finalResponseModel.setErrorMessage(ex.getLocalizedMessage());
@@ -198,22 +198,22 @@ public class ProjectCreaterApplication {
 		return finalResponseModel;
 	}
 
-	private Map<String, String> getDefaultFinalResponseMap() {
-		Map<String, String> finalResponseHashMap = new HashMap<String, String>();
-		finalResponseHashMap.put("Clone from Git","false"); //Source cloned from Git
-		finalResponseHashMap.put("Directories Identified","false"); //Directories Identified
-		finalResponseHashMap.put("Push Projects to Git","false"); //Push to Destination
+	private Map<String, Boolean> getDefaultFinalResponseMap() {
+		Map<String, Boolean> finalResponseHashMap = new HashMap<String, Boolean>();
+		finalResponseHashMap.put("CloneFromGit",false); //Source cloned from Git
+		finalResponseHashMap.put("DirectoriesIdentified",false); //Directories Identified
+		finalResponseHashMap.put("PushToGit",false); //Push to Destination
 		return finalResponseHashMap;
 	}
 
 	private Map getDefaultResponseMap() {
-		Map projectResponseMap = new HashMap<String, String>();
-		projectResponseMap.put("1","false"); //Open API command executed
-		projectResponseMap.put("2","false"); //Directory cleaned up
-		projectResponseMap.put("3","false"); //Main Java file modified
-		projectResponseMap.put("4","false"); //Properties file modified
-		projectResponseMap.put("5","false"); //POM file modified
-		projectResponseMap.put("6","false"); //Integration XML created
+		Map projectResponseMap = new HashMap<String, Boolean>();
+		projectResponseMap.put("1",false); //Open API command executed
+		projectResponseMap.put("2",false); //Directory cleaned up
+		projectResponseMap.put("3",false); //Main Java file modified
+		projectResponseMap.put("4",false); //Properties file modified
+		projectResponseMap.put("5",false); //POM file modified
+		projectResponseMap.put("6",false); //Integration XML created
 		return projectResponseMap;
 	}
 

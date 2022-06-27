@@ -11,13 +11,13 @@ public class FinalResponseModel {
 	
 	String stackTrace;
 	
-	Map<String, String> finalResponseMap;
+	Map<String, Boolean> finalResponseMap;
 	
 
-	public Map<String, String> getFinalResponseMap() {
+	public Map<String, Boolean> getFinalResponseMap() {
 		return finalResponseMap;
 	}
-	public void setFinalResponseMap(Map<String, String> finalResponseMap) {
+	public void setFinalResponseMap(Map<String, Boolean> finalResponseMap) {
 		this.finalResponseMap = finalResponseMap;
 	}
 	public FinalResponseModel(List<ResultModel> resultModelList, String errorMessage, String stackTrace) {
