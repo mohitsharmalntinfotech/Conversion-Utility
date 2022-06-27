@@ -8,7 +8,7 @@ public class ResultModel {
 	private boolean success;
 	private String error;
 	private String stackTrace;
-	private Map<String, String> responseMap;
+	private Map<String, Boolean> responseMap;
 
 	public ResultModel(String projectName, boolean success, String error, String stackTrace) {
 		super();
@@ -53,11 +53,11 @@ public class ResultModel {
 		this.stackTrace = stackTrace;
 	}
 	
-	public Map<String, String> getResponseMap() {
+	public Map<String, Boolean> getResponseMap() {
 		return responseMap;
 	}
 
-	public void setResponseMap(Map<String, String> responseMap) {
+	public void setResponseMap(Map<String, Boolean> responseMap) {
 		this.responseMap = responseMap;
 	}
 
